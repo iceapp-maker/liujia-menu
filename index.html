@@ -25,7 +25,7 @@
       min-height: 100vh;
     }
 
-    /* 頂部導覽列：兼顧桌面與手機（動態島） */
+    /* 頂部導覽列 */
     .header-bar {
       background: #fff;
       padding-top: calc(14px + env(safe-area-inset-top, 0px));
@@ -46,13 +46,18 @@
       align-items: center;
       margin-bottom: 4px;
     }
+    /* 桌號標籤：改為可點擊切換 */
     .table-tag {
       font-size: 13px;
       background: var(--primary-light);
       color: var(--primary);
-      padding: 3px 8px;
-      border-radius: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
       font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
     .store-info-btn {
       font-size: 13px;
@@ -75,26 +80,28 @@
     }
     .queue-highlight { font-weight: bold; color: #856404; font-size: 15px; }
 
-    /* 店家詳細資訊彈窗 */
-    .info-modal {
+    /* 通用 Modal 背景 */
+    .modal-backdrop {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.55);
       z-index: 1000;
       justify-content: center;
       align-items: center;
       padding: 20px;
     }
-    .info-box {
+    .center-modal-box {
       background: #fff;
-      border-radius: 12px;
+      border-radius: 14px;
       width: 100%;
-      max-width: 380px;
-      padding: 20px;
+      max-width: 360px;
+      padding: 22px 20px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     }
-    .info-box h3 { margin-bottom: 12px; color: var(--primary); font-size: 18px; }
-    .info-box p { font-size: 14px; color: #424242; margin-bottom: 8px; line-height: 1.5; }
+    .center-modal-box h3 { margin-bottom: 10px; color: var(--primary); font-size: 19px; }
+    .center-modal-box p { font-size: 14px; color: #424242; margin-bottom: 14px; line-height: 1.5; }
 
     /* 分類切換列 */
     .category-tabs {
@@ -244,7 +251,7 @@
     .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .form-group { margin: 12px 0; }
     .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: var(--gray); }
-    .form-input { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+    .form-input { width: 100%; padding: 11px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
   </style>
 </head>
 <body>
@@ -253,7 +260,10 @@
   <div class="header-bar">
     <div class="store-title">
       <span>劉家川味牛肉麵</span>
-      <span class="table-tag" id="currentTableDisplay">請選桌號</span>
+      <!-- 點擊標籤可重選桌號 -->
+      <span class="table-tag" id="currentTableDisplay" onclick="openTableSelectModal()">
+        <span id="tableDisplayText">選擇用餐方式</span> ▾
+      </span>
     </div>
     <button class="store-info-btn" onclick="toggleInfoModal(true)">營業資訊 & 注意事項 ℹ️</button>
   </div>
@@ -266,9 +276,43 @@
     </div>
   </div>
 
+  <!-- 用餐方式與桌號選擇彈窗（進站未選時必填） -->
+  <div class="modal-backdrop" id="tableSelectModal">
+    <div class="center-modal-box">
+      <h3>請選擇用餐方式</h3>
+      <p>請確認您的用餐型態，方便店家為您出餐：</p>
+      
+      <div style="margin-bottom: 14px;">
+        <label style="display:block; text-align:left; font-size:13px; font-weight:bold; margin-bottom:6px; color:#555;">用餐型態</label>
+        <select class="form-input" id="modalDiningType" onchange="toggleTableNumberDropdown()">
+          <option value="dine_in">內用</option>
+          <option value="takeout">外帶</option>
+        </select>
+      </div>
+
+      <div id="modalTableNumberGroup" style="margin-bottom: 18px;">
+        <label style="display:block; text-align:left; font-size:13px; font-weight:bold; margin-bottom:6px; color:#555;">請選擇桌號</label>
+        <select class="form-input" id="modalTableNumber">
+          <option value="1">第 1 桌</option>
+          <option value="2">第 2 桌</option>
+          <option value="3">第 3 桌</option>
+          <option value="4">第 4 桌</option>
+          <option value="5">第 5 桌</option>
+          <option value="6">第 6 桌</option>
+          <option value="7">第 7 桌</option>
+          <option value="8">第 8 桌</option>
+        </select>
+      </div>
+
+      <button class="add-btn" style="width: 100%; padding: 12px; font-size: 16px;" onclick="confirmTableSelection()">
+        確認開始點餐
+      </button>
+    </div>
+  </div>
+
   <!-- 店家資訊彈窗 -->
-  <div class="info-modal" id="infoModal" onclick="toggleInfoModal(false)">
-    <div class="info-box" onclick="event.stopPropagation()">
+  <div class="modal-backdrop" id="infoModal" onclick="toggleInfoModal(false)">
+    <div class="center-modal-box" style="text-align: left;" onclick="event.stopPropagation()">
       <h3>店家資訊 & 注意事項</h3>
       <p>📍 <strong>地址</strong>：台南市永康區中山北路131號</p>
       <p>📞 <strong>電話</strong>：(06)231-2729 / 0963-113-277</p>
@@ -276,7 +320,7 @@
       <hr style="margin: 10px 0; border: none; border-top: 1px solid #eee;">
       <p>⚠️ <strong>注意事項</strong>：</p>
       <p>• 餐點現點現做，人多時敬請稍候。<br>• 內用請先掃描桌上 QR Code 點餐。<br>• 加飯、加麵一律 +10 元。<br>• 水餃每份起點 10 顆。</p>
-      <button class="add-btn" style="width: 100%; margin-top: 12px;" onclick="toggleInfoModal(false)">關閉</button>
+      <button class="add-btn" style="width: 100%; margin-top: 10px;" onclick="toggleInfoModal(false)">關閉</button>
     </div>
   </div>
 
@@ -340,15 +384,8 @@
       </div>
 
       <div class="form-group">
-        <label>用餐方式 / 桌號 *</label>
-        <select class="form-input" id="tableTypeSelect">
-          <option value="內用-1桌">內用 - 1 桌</option>
-          <option value="內用-2桌">內用 - 2 桌</option>
-          <option value="內用-3桌">內用 - 3 桌</option>
-          <option value="內用-4桌">內用 - 4 桌</option>
-          <option value="內用-5桌">內用 - 5 桌</option>
-          <option value="外帶">外帶</option>
-        </select>
+        <label>當前用餐方式（如需變更請點擊上方頂部桌號）</label>
+        <input type="text" class="form-input" id="drawerDiningDisplay" readonly style="background:#f0f0f0; color:#555;">
       </div>
 
       <div class="form-group">
@@ -373,7 +410,6 @@
   </div>
 
   <script>
-    // 菜單完整資料庫配置
     const MENU_DATA = [
       {
         category: "麵類",
@@ -413,6 +449,7 @@
       }
     ];
 
+    let currentDiningMode = ""; // 儲存當前桌號或外帶字串
     let cart = [];
     let activeItem = null;
     let modalSelectedSize = "小";
@@ -420,7 +457,6 @@
     let modalSelectedAddons = [];
     let modalQty = 1;
 
-    // 安全 Storage 存取，防止本地 file:// 或隱私模式報錯
     function safeGet(key) {
       try { return localStorage.getItem(key) || ""; } catch(e) { return ""; }
     }
@@ -428,6 +464,50 @@
       try { localStorage.setItem(key, val); } catch(e) {}
     }
 
+    // 1. 初始化顧客桌號判定
+    function checkDiningSetup() {
+      const params = new URLSearchParams(window.location.search);
+      const table = params.get("table");
+      const type = params.get("type");
+
+      if (table) {
+        setDiningStatus(`內用 - ${table} 桌`);
+      } else if (type === "takeout") {
+        setDiningStatus("外帶顧客");
+      } else {
+        // 未帶參數，彈出選擇彈窗
+        openTableSelectModal();
+      }
+    }
+
+    function setDiningStatus(text) {
+      currentDiningMode = text;
+      document.getElementById("tableDisplayText").innerText = text;
+      document.getElementById("drawerDiningDisplay").value = text;
+    }
+
+    window.openTableSelectModal = function() {
+      document.getElementById("tableSelectModal").style.display = "flex";
+    };
+
+    window.toggleTableNumberDropdown = function() {
+      const type = document.getElementById("modalDiningType").value;
+      const group = document.getElementById("modalTableNumberGroup");
+      group.style.display = (type === "dine_in") ? "block" : "none";
+    };
+
+    window.confirmTableSelection = function() {
+      const type = document.getElementById("modalDiningType").value;
+      if (type === "takeout") {
+        setDiningStatus("外帶顧客");
+      } else {
+        const tableNum = document.getElementById("modalTableNumber").value;
+        setDiningStatus(`內用 - ${tableNum} 桌`);
+      }
+      document.getElementById("tableSelectModal").style.display = "none";
+    };
+
+    // 2. 初始化姓名與電話
     function initCustomerInfo() {
       const savedName = safeGet("order_cust_name");
       const savedPhone = safeGet("order_cust_phone");
@@ -435,26 +515,7 @@
       if (savedPhone) document.getElementById("custPhone").value = savedPhone;
     }
 
-    function parseUrlParams() {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const table = params.get("table");
-        const type = params.get("type");
-        const displayTag = document.getElementById("currentTableDisplay");
-        const selectTag = document.getElementById("tableTypeSelect");
-
-        if (table) {
-          displayTag.innerText = `內用 - ${table} 桌`;
-          selectTag.value = `內用-${table}桌`;
-        } else if (type === "takeout") {
-          displayTag.innerText = "外帶顧客";
-          selectTag.value = "外帶";
-        } else {
-          displayTag.innerText = "內用 - 1 桌";
-        }
-      } catch(e) {}
-    }
-
+    // 3. 渲染分類與菜單
     function renderTabs() {
       const tabsContainer = document.getElementById("categoryTabs");
       if (!tabsContainer) return;
@@ -675,7 +736,12 @@
     window.submitOrder = function() {
       const name = document.getElementById("custName").value.trim();
       const phone = document.getElementById("custPhone").value.trim();
-      const table = document.getElementById("tableTypeSelect").value;
+
+      if (!currentDiningMode) {
+        alert("請先選擇用餐方式（內用桌號或外帶）！");
+        openTableSelectModal();
+        return;
+      }
 
       if (!name || !phone) {
         alert("請填寫姓名與電話，以便店家核對！");
@@ -686,7 +752,7 @@
       safeSet("order_cust_phone", phone);
 
       const queueNumber = Math.floor(100 + Math.random() * 900);
-      alert(`點餐成功！您的取號是 #${queueNumber}`);
+      alert(`點餐成功！您的取號是 #${queueNumber}（${currentDiningMode}）`);
 
       cart = [];
       updateCartDisplay();
@@ -698,11 +764,11 @@
       document.getElementById("completedQueueNumber").innerText = `#${queueNumber - 1}`;
     };
 
-    // 立即啟動：保證 DOM 節點渲染
+    // 啟動程序
     initCustomerInfo();
-    parseUrlParams();
     renderTabs();
     renderMenu(MENU_DATA[0].category);
+    checkDiningSetup();
   </script>
 </body>
 </html>
