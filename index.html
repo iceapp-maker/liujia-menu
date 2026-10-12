@@ -161,7 +161,7 @@
       cursor: pointer;
     }
 
-    /* 規格選單 Modal（點深色背景可關閉） */
+    /* 規格選單 Modal */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -333,7 +333,7 @@
   
   <!-- 版本號標示 -->
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.12-02
+    v2026.10.12-03
   </div>
 
   <!-- 底部浮動購物車條 -->
@@ -348,7 +348,6 @@
   <!-- 規格選單 Modal（點深色背景可關閉） -->
   <div class="modal-overlay" id="optionModal" onclick="closeOptionModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
-      <!-- 頂部標題與 ✕ 退出按鈕 -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
         <div class="modal-title" id="modalItemName">餐點名稱</div>
         <button type="button" onclick="closeOptionModal()" style="background: none; border: none; font-size: 24px; color: #888; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
@@ -361,7 +360,7 @@
         <div class="options-grid" id="sizeOptionsGrid"></div>
       </div>
 
-      <!-- 主食選擇（飯/麵） -->
+      <!-- 主食選擇 -->
       <div id="stapleSection" style="display: none;">
         <div class="section-label">主食選擇</div>
         <div class="options-grid" id="stapleOptionsGrid"></div>
@@ -381,7 +380,7 @@
         <button class="qty-btn" type="button" onclick="adjustModalQty(1)">+</button>
       </div>
 
-      <!-- 雙按鈕：取消返回 與 加入清單 -->
+      <!-- 雙按鈕 -->
       <div style="display: flex; gap: 10px; margin-top: 16px;">
         <button type="button" onclick="closeOptionModal()" style="flex: 1; padding: 13px; font-size: 15px; font-weight: bold; background: #f0f0f0; color: #555; border: 1px solid #ddd; border-radius: 8px; cursor: pointer;">
           取消返回
@@ -494,17 +493,17 @@
       try { localStorage.setItem(key, val); } catch(e) {}
     }
 
-    // 💡 修正後保障安全且純數字的桌號初始化
+    // 💡 關鍵安全修正：只抓取「最開頭的數字」，防止 link 亂碼湊成 33
     function checkDiningSetup() {
       const params = new URLSearchParams(window.location.search);
       let table = params.get("table");
       const type = params.get("type");
 
       if (table) {
-        // 移除非數字的所有雜亂字元，避免長網址注入 Bug
-        table = table.replace(/[^\d]/g, '');
-        if (table) {
-          setDiningStatus(`內用 - ${table} 桌`);
+        // 先嘗試匹配開頭的數字 (如: '3' 或 '12')
+        const match = table.match(/^\d+/);
+        if (match) {
+          setDiningStatus(`內用 - ${match[0]} 桌`);
           return;
         }
       }
@@ -890,7 +889,7 @@
     checkDiningSetup();
   </script>
 
-  <!-- 非同步安全載入 Firebase，不卡死畫面 -->
+  <!-- 非同步安全載入 Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js" defer></script>
   <script defer>
@@ -908,7 +907,6 @@
           firebase.initializeApp(firebaseConfig);
           window.firebaseDb = firebase.firestore();
 
-          // 雲端即時叫號監聽
           window.firebaseDb.collection("system_status").doc("today").onSnapshot((doc) => {
             if (doc.exists) {
               const data = doc.data();
