@@ -284,6 +284,7 @@
 </head>
 <body>
 
+  <!-- 頂部資訊區 -->
   <div class="header-bar">
     <div class="store-title">
       <span>劉家川味牛肉麵</span>
@@ -294,14 +295,7 @@
     <button class="store-info-btn" onclick="toggleInfoModal(true)">營業資訊 & 注意事項 ℹ️</button>
   </div>
 
-  <div class="queue-status-bar" id="queueStatusBar">
-    <div>您的訂單取號：<span class="queue-highlight" id="myQueueNumber">#--</span></div>
-    <div style="margin-top: 4px; font-size: 13px; color: #666;">
-      櫃台目前完成至：<span id="completedQueueNumber" style="font-weight:bold; color:#d32f2f; font-size:16px;">#--</span>（請留意叫號）
-    </div>
-  </div>
-
-  <!-- 用餐方式彈窗 -->
+  <!-- 用餐方式選擇彈窗 -->
   <div class="modal-backdrop" id="tableSelectModal" onclick="closeTableSelectModal()">
     <div class="center-modal-box" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -309,6 +303,7 @@
         <button type="button" onclick="closeTableSelectModal()" style="background: none; border: none; font-size: 22px; color: #888; cursor: pointer;">✕</button>
       </div>
       <p style="font-size: 13px;">請確認您的用餐型態，方便店家為您出餐：</p>
+      
       <div style="margin-bottom: 14px;">
         <label style="display:block; text-align:left; font-size:13px; font-weight:bold; margin-bottom:6px; color:#555;">用餐型態</label>
         <select class="form-input" id="modalDiningType" onchange="toggleTableNumberDropdown()">
@@ -316,6 +311,7 @@
           <option value="takeout">外帶</option>
         </select>
       </div>
+
       <div id="modalTableNumberGroup" style="margin-bottom: 18px;">
         <label style="display:block; text-align:left; font-size:13px; font-weight:bold; margin-bottom:6px; color:#555;">請選擇桌號</label>
         <select class="form-input" id="modalTableNumber">
@@ -324,10 +320,12 @@
           <option value="7">第 7 桌</option><option value="8">第 8 桌</option>
         </select>
       </div>
+
       <button class="add-btn" style="width: 100%; padding: 12px; font-size: 16px;" onclick="confirmTableSelection()">確認開始點餐</button>
     </div>
   </div>
 
+  <!-- 店家資訊彈窗 -->
   <div class="modal-backdrop" id="infoModal" onclick="toggleInfoModal(false)">
     <div class="center-modal-box" style="text-align: left;" onclick="event.stopPropagation()">
       <h3>店家資訊 & 注意事項</h3>
@@ -341,23 +339,49 @@
     </div>
   </div>
 
-  <div class="category-tabs" id="categoryTabs"></div>
+  <!-- 💡 點餐區域：包含分類、菜單與購物車 -->
+  <div id="orderingSection">
+    <div class="category-tabs" id="categoryTabs"></div>
 
-  <div class="menu-container" id="menuContainer">
-    <div style="text-align: center; padding: 40px 20px; color: #888;">
-      <div class="loader"></div>正在與雲端同步最新菜單...
+    <div class="menu-container" id="menuContainer">
+      <div style="text-align: center; padding: 40px 20px; color: #888;">
+        <div class="loader"></div>正在與雲端同步最新菜單...
+      </div>
+    </div>
+    
+    <div class="bottom-cart-bar" id="cartBar" onclick="toggleCartDrawer(true)" style="display: none;">
+      <div><span class="cart-count" id="cartTotalCount">0</span><span>合計: $<span id="cartTotalPrice">0</span></span></div>
+      <button class="checkout-btn">檢視清單 🛒</button>
     </div>
   </div>
-  
+
+  <!-- 💡 新增：智慧訂單狀態面板 (預設隱藏) -->
+  <div id="orderDashboardSection" style="display: none; padding: 20px 16px; max-width: 600px; margin: 0 auto; text-align: center; animation: slideUp 0.3s ease;">
+    <h2 style="color: var(--primary); margin-bottom: 15px;">✅ 訂單已成功送出</h2>
+    
+    <div style="background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 20px; border: 1px solid var(--border);">
+      <p style="font-size: 15px; color: #555; margin-bottom: 5px;">您的訂單取號</p>
+      <div style="font-size: 52px; font-weight: bold; color: var(--primary); margin: 0; line-height: 1;">#<span id="dashboardMyNum">--</span></div>
+      <p style="font-size: 14px; color: #888; margin-top: 10px;">目前櫃台處理至：<span id="dashboardCompletedNum" style="font-weight:bold; color:#333; font-size:16px;">#--</span></p>
+    </div>
+    
+    <div style="background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); text-align: left; margin-bottom: 20px; border: 1px solid var(--border);">
+      <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 8px; color: var(--text);">訂單明細確認</h4>
+      <div id="dashboardOrderItems" style="font-size: 15px; color: #444; line-height: 1.6;"></div>
+      <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; text-align: right; font-weight: bold; font-size: 18px; color: var(--primary);">
+        總計金額：$<span id="dashboardTotal">0</span>
+      </div>
+    </div>
+
+    <!-- 動態顯示按鈕區（修改訂單或完成） -->
+    <div id="dashboardActionArea"></div>
+  </div>
+
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.12-Final-Sync
+    v2026.10.12-SmartDashboard
   </div>
 
-  <div class="bottom-cart-bar" id="cartBar" onclick="toggleCartDrawer(true)" style="display: none;">
-    <div><span class="cart-count" id="cartTotalCount">0</span><span>合計: $<span id="cartTotalPrice">0</span></span></div>
-    <button class="checkout-btn">檢視清單 🛒</button>
-  </div>
-
+  <!-- 規格選單 Modal -->
   <div class="modal-overlay" id="optionModal" onclick="closeOptionModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -390,6 +414,7 @@
     </div>
   </div>
 
+  <!-- 結帳抽屜 -->
   <div class="drawer-overlay" id="cartDrawer" onclick="toggleCartDrawer(false)">
     <div class="drawer-content" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -400,8 +425,11 @@
       <div style="text-align: right; margin: 12px 0; font-size: 16px; font-weight: bold;">總金額：<span style="color: var(--primary); font-size: 20px;">$<span id="drawerTotalPrice">0</span></span></div>
 
       <div class="form-group"><label>當前用餐方式</label><input type="text" class="form-input" id="drawerDiningDisplay" readonly style="background:#f0f0f0; color:#555;"></div>
-      <div class="form-group"><label>聯絡姓名 *（下次自動記憶）</label><input type="text" class="form-input" id="custName" placeholder="例如：陳先生"></div>
-      <div class="form-group"><label>聯絡電話 *（下次自動記憶）</label><input type="tel" class="form-input" id="custPhone" placeholder="例如：0912345678"></div>
+      
+      <!-- 💡 動態隱藏區：內用免填姓名電話 -->
+      <div class="form-group" id="nameFormGroup"><label>聯絡姓名 *（外帶必填，下次自動記憶）</label><input type="text" class="form-input" id="custName" placeholder="例如：陳先生"></div>
+      <div class="form-group" id="phoneFormGroup"><label>聯絡電話 *（外帶必填，下次自動記憶）</label><input type="tel" class="form-input" id="custPhone" placeholder="例如：0912345678"></div>
+      
       <div class="form-group"><label>訂單備註</label><input type="text" class="form-input" id="orderNote" placeholder="例如：麵硬、不要酸菜"></div>
 
       <div style="display: flex; gap: 10px; margin-top: 14px;">
@@ -411,11 +439,18 @@
     </div>
   </div>
 
+  <!-- 菜單資料與前端邏輯 -->
   <script>
     let MENU_DATA = [];
     let isRiceAvailable = true; // 全域白飯庫存狀態
     let currentDiningMode = "內用 - 1 桌";
     let cart = [];
+    
+    // 智慧儀表板狀態
+    let myCurrentOrderDocId = null;
+    let myCurrentQueueNum = null;
+    let globalCompletedNum = 0;
+
     let activeItem = null;
     let modalSelectedSize = "小";
     let modalSelectedAddons = [];
@@ -479,11 +514,12 @@
 
         categories.forEach(cat => {
           cat.items = items.filter(item => item.category_name === cat.name);
-          // 在每個分類內排序 (例如字面排序)
           cat.items.sort((a,b) => a.name.localeCompare(b.name));
         });
 
-        MENU_DATA = categories.map(c => ({ category: c.name, items: c.items }));
+        // 過濾掉空的分類
+        MENU_DATA = categories.filter(c => c.items.length > 0).map(c => ({ category: c.name, items: c.items }));
+        
         renderTabs();
         if (MENU_DATA.length > 0) renderMenu(MENU_DATA[0].category);
         else document.getElementById("menuContainer").innerHTML = `<div style="text-align:center; padding:30px; color:#999;">老闆目前尚未上架任何餐點喔！</div>`;
@@ -568,12 +604,12 @@
       if (activeItem.addons && activeItem.addons.length > 0) {
         addonSec.style.display = "block";
         addonGrid.innerHTML = activeItem.addons.map(addon => {
-          // 白飯全域連動機制
+          // 💡 全域白飯庫存連動機制
           let disabled = false;
           if (addon.name.includes("飯") && !isRiceAvailable) disabled = true;
 
           if (disabled) {
-            return `<div class="option-btn disabled">${addon.name} (售完)</div>`;
+            return `<div class="option-btn disabled">${addon.name} <br><span style="font-size:11px; color:#d32f2f;">(售完)</span></div>`;
           } else {
             const priceStr = addon.price > 0 ? `(+$${addon.price})` : '';
             return `<div class="option-btn" onclick="toggleAddon('${addon.name}', ${addon.price}, this)">${addon.name} ${priceStr}</div>`;
@@ -658,9 +694,17 @@
       }
     }
 
+    // 💡 購物車抽屜控制 (含內用免填姓名電話防呆機制)
     window.toggleCartDrawer = (open) => {
       document.getElementById("cartDrawer").style.display = open ? "flex" : "none";
-      if (open) renderDrawerList();
+      if (open) {
+        renderDrawerList();
+        
+        // 判斷是否為內用
+        const isDineIn = currentDiningMode.includes("內用");
+        document.getElementById("nameFormGroup").style.display = isDineIn ? "none" : "block";
+        document.getElementById("phoneFormGroup").style.display = isDineIn ? "none" : "block";
+      }
     };
 
     function renderDrawerList() {
@@ -714,22 +758,33 @@
 
     window.toggleInfoModal = (show) => document.getElementById("infoModal").style.display = show ? "flex" : "none";
 
+    // 💡 送出訂單與智慧儀表板切換
     window.submitOrder = async function() {
       const name = document.getElementById("custName").value.trim();
       const phone = document.getElementById("custPhone").value.trim();
       const note = document.getElementById("orderNote").value.trim();
       const btn = document.getElementById("submitOrderBtn");
+      
+      const isDineIn = currentDiningMode.includes("內用");
 
       if (cart.length === 0) return alert("購物車內尚無餐點！");
-      if (!name || !phone) return alert("請填寫姓名與電話，以便店家核對！");
+      
+      // 內用不強制驗證，外帶強制驗證
+      if (!isDineIn && (!name || !phone)) {
+        return alert("外帶請務必填寫聯絡姓名與電話，以便店家核對！");
+      }
 
-      safeSet("order_cust_name", name);
-      safeSet("order_cust_phone", phone);
+      // 儲存外帶客資訊供下次使用
+      if (!isDineIn) {
+        safeSet("order_cust_name", name);
+        safeSet("order_cust_phone", phone);
+      }
 
       btn.disabled = true;
       btn.innerText = "訂單送出中...";
 
       let finalQueueNumber = Math.floor(100 + Math.random() * 900);
+      let newDocId = null;
 
       try {
         if (window.firebaseDb) {
@@ -747,11 +802,17 @@
             }
 
             const newOrderRef = window.firebaseDb.collection("orders").doc();
+            newDocId = newOrderRef.id;
+            
+            // 內用客如果沒填名字，給予預設值
+            const finalName = (isDineIn && !name) ? "內用顧客" : name;
+            const finalPhone = (isDineIn && !phone) ? "無" : phone;
+
             transaction.set(newOrderRef, {
               queue_number: finalQueueNumber,
               table_number: currentDiningMode,
-              customer_name: name,
-              customer_phone: phone,
+              customer_name: finalName,
+              customer_phone: finalPhone,
               note: note,
               items: cart,
               total_amount: cart.reduce((sum, i) => sum + i.subtotal, 0),
@@ -768,14 +829,107 @@
         return;
       }
 
-      alert(`點餐成功！您的取號是 #${finalQueueNumber}（${currentDiningMode}）`);
+      // 備份購物車供退回修改使用
+      safeSet("last_cart_backup", JSON.stringify(cart));
+      
+      myCurrentOrderDocId = newDocId;
+      myCurrentQueueNum = finalQueueNumber;
+      
+      // 切換至智慧儀表板
+      document.getElementById("orderingSection").style.display = "none";
+      document.getElementById("orderDashboardSection").style.display = "block";
+      
+      document.getElementById("dashboardMyNum").innerText = finalQueueNumber;
+      
+      // 渲染儀表板明細
+      document.getElementById("dashboardOrderItems").innerHTML = cart.map(item => `
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px dashed #eee; padding-bottom:8px;">
+          <div>
+            <strong>${item.name}</strong> ${item.size ? `(${item.size})` : ''} 
+            <span style="color:var(--primary); font-weight:bold;">x${item.qty}</span>
+            <div style="font-size:12px; color:#888; margin-top:2px;">${item.addons.map(a=>a.name).join(', ')}</div>
+          </div>
+          <div style="font-weight:bold;">$${item.subtotal}</div>
+        </div>
+      `).join('');
+      document.getElementById("dashboardTotal").innerText = cart.reduce((sum, i) => sum + i.subtotal, 0);
+
       cart = [];
       updateCartDisplay();
       toggleCartDrawer(false);
-
-      document.getElementById("queueStatusBar").style.display = "block";
-      document.getElementById("myQueueNumber").innerText = `#${finalQueueNumber}`;
+      btn.disabled = false;
+      btn.innerText = "確認送出訂單";
+      
+      updateDashboardStatus(); // 呼叫狀態更新
     };
+
+    // 💡 智慧儀表板狀態控制 (計算距離號碼)
+    function updateDashboardStatus() {
+      if (!myCurrentQueueNum) return;
+      
+      const diff = myCurrentQueueNum - globalCompletedNum;
+      const actionArea = document.getElementById("dashboardActionArea");
+      
+      if (diff <= 0) {
+         // 已經輪到他了
+         actionArea.innerHTML = `
+           <div style="background: #d4edda; color: #155724; padding: 16px; border-radius: 12px; font-weight: bold; margin-bottom: 15px; border: 1px solid #c3e6cb;">
+             🎉 您的餐點已完成，請前往櫃台取餐！
+           </div>
+           <button onclick="resetToMenu()" style="width: 100%; padding: 14px; border-radius: 10px; background: #f0f0f0; color: #333; border: none; font-size: 16px; font-weight:bold; cursor: pointer;">← 繼續點下一單</button>
+         `;
+      } else if (diff === 1) {
+         // 下一碗就是他
+         actionArea.innerHTML = `
+           <div style="background: #fff3cd; color: #856404; padding: 14px; border-radius: 12px; font-weight: bold; border: 1px solid #ffeeba; font-size: 14px;">
+             🔥 廚房已開始製作您的餐點，無法線上修改。<br>如需協助請洽櫃台。
+           </div>
+         `;
+      } else {
+         // 還差2號以上，允許退回修改
+         actionArea.innerHTML = `
+           <button onclick="cancelAndEditOrder()" style="width: 100%; padding: 14px; border-radius: 10px; background: #ffebee; color: #d32f2f; border: 1px solid #ffcdd2; font-size: 16px; font-weight:bold; cursor: pointer; box-shadow: 0 2px 6px rgba(211,47,47,0.15);">
+             ✏️ 廚房尚未製作，退回修改訂單
+           </button>
+           <div style="font-size:12px; color:#999; margin-top:8px;">(退回後，您原本選購的餐點會保留在購物車中)</div>
+         `;
+      }
+    }
+
+    // 退回修改功能
+    window.cancelAndEditOrder = async function() {
+       if(!confirm("確定要取消目前訂單，並退回購物車修改嗎？\n(原本的排隊號碼將會作廢)")) return;
+       
+       try {
+          if (window.firebaseDb && myCurrentOrderDocId) {
+             // 雲端作廢訂單
+             await window.firebaseDb.collection("orders").doc(myCurrentOrderDocId).update({
+                status: "cancelled" // 標記為作廢
+             });
+          }
+          
+          // 還原購物車內容
+          const backup = safeGet("last_cart_backup");
+          if (backup) {
+            cart = JSON.parse(backup);
+          }
+          
+          resetToMenu();
+          updateCartDisplay();
+          toggleCartDrawer(true); // 自動打開購物車方便修改
+          
+       } catch(err) {
+          alert("取消失敗，請確認網路或逕洽櫃台人員。");
+       }
+    };
+
+    function resetToMenu() {
+       myCurrentOrderDocId = null;
+       myCurrentQueueNum = null;
+       document.getElementById("orderDashboardSection").style.display = "none";
+       document.getElementById("orderingSection").style.display = "block";
+    }
+
   </script>
 
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
@@ -800,9 +954,20 @@
           initCustomerInfo();
           checkDiningSetup();
 
+          // 即時監聽櫃台號碼
           window.firebaseDb.collection("system_status").doc("today").onSnapshot((doc) => {
             if (doc.exists && doc.data().current_completed_number) {
-              document.getElementById("completedQueueNumber").innerText = `#${doc.data().current_completed_number}`;
+              globalCompletedNum = doc.data().current_completed_number;
+              
+              // 增加安全判斷，避免因舊版 UI 元素不存在而產生 null 錯誤
+              const dashboardElem = document.getElementById("dashboardCompletedNum");
+              if (dashboardElem) dashboardElem.innerText = `#${globalCompletedNum}`;
+              
+              const oldBannerElem = document.getElementById("completedQueueNumber");
+              if (oldBannerElem) oldBannerElem.innerText = `#${globalCompletedNum}`;
+              
+              // 觸發儀表板按鈕狀態刷新
+              updateDashboardStatus();
             }
           });
         }
