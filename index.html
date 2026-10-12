@@ -165,6 +165,26 @@
       cursor: pointer;
     }
 
+    /* 💡 新增：已售完的樣式 */
+    .item-card.sold-out {
+      opacity: 0.6;
+      background: #fcfcfc;
+    }
+    .item-card.sold-out .item-price {
+      color: #999;
+      text-decoration: line-through;
+    }
+    .btn-disabled {
+      background: #e0e0e0;
+      color: #757575;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: not-allowed;
+    }
+
     /* 規格選單 Modal */
     .modal-overlay {
       display: none;
@@ -336,9 +356,9 @@
     </div>
   </div>
   
-  <!-- 版本號標示 -->
+  <!-- 版本號標示 (保留一個即可) -->
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.12-04 (Cloud Menu)
+    v2026.10.12-06 (Clean UI)
   </div>
 
   <!-- 底部浮動購物車條 -->
@@ -461,11 +481,11 @@
           categories.push({ id: doc.id, name: d.name, sort_order: d.sort_order || 0, items: [] });
         });
 
-        // 💡 透過 JavaScript 在前端進行排序，完美解決 Firebase 複合索引要求
+        // 透過 JavaScript 在前端進行排序，完美解決 Firebase 複合索引要求
         categories.sort((a, b) => a.sort_order - b.sort_order);
 
-        // 抓取「未售完」的餐點
-        const itemSnap = await window.firebaseDb.collection("menu_items").where("is_available", "==", true).get();
+        // 💡 抓取「所有」餐點，不再過濾售完品項，讓前端來判斷顯示
+        const itemSnap = await window.firebaseDb.collection("menu_items").get();
         let items = [];
         itemSnap.forEach(doc => {
           const d = doc.data();
@@ -478,7 +498,8 @@
             prices: { "小": d.price_small, "大": d.price_large },
             minQty: d.min_qty || 1,
             addons: d.addons || [],
-            staples: d.staples || []
+            staples: d.staples || [],
+            is_available: d.is_available !== false // 記錄是否售完，預設為 true
           });
         });
 
@@ -567,27 +588,40 @@
       container.innerHTML = group.items.map(item => {
         let priceLabel = item.type === "size" ? `小 $${item.prices["小"]} / 大 $${item.prices["大"]}` : 
                          item.type === "dumpling" ? `$${item.price} / 顆 (低消 ${item.minQty} 顆)` : `$${item.price}`;
+        
+        // 💡 判斷是否售完，套用不同樣式與按鈕
+        const isSoldOut = !item.is_available;
+        const cardClass = isSoldOut ? "item-card sold-out" : "item-card";
+        const btnHtml = isSoldOut 
+          ? `<button class="btn-disabled" type="button" disabled>已售完</button>`
+          : `<button class="add-btn" type="button" onclick="openOptionModalById('${item.id}')">選購</button>`;
+
         return `
-          <div class="item-card">
+          <div class="${cardClass}">
             <div class="item-info">
               <div class="item-name">${item.name}</div>
               <div class="item-price">${priceLabel}</div>
             </div>
-            <button class="add-btn" type="button" onclick="openOptionModalById('${item.id}')">選購</button>
+            ${btnHtml}
           </div>
         `;
       }).join('');
     }
 
-    // 💡 4. 動態生成客製化選項（直接讀取資料庫陣列）
+    // 💡 補回遺失的選購視窗函數開頭
     window.openOptionModalById = function(itemId) {
       let foundItem = null;
-      for (const cat of MENU_DATA) { foundItem = cat.items.find(i => i.id === itemId); if (foundItem) break; }
+      for (const cat of MENU_DATA) {
+        foundItem = cat.items.find(i => i.id === itemId);
+        if (foundItem) break;
+      }
       if (!foundItem) return;
 
       activeItem = foundItem;
       modalSelectedAddons = [];
       modalQty = activeItem.minQty ? activeItem.minQty : 1;
+
+      // 動態生成客製化選項
       document.getElementById("modalItemName").innerText = activeItem.name;
       document.getElementById("modalQtyDisplay").innerText = modalQty;
 
