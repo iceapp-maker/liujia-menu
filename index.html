@@ -330,6 +330,11 @@
 
   <!-- 餐點清單容器 -->
   <div class="menu-container" id="menuContainer"></div>
+  
+  <!-- 💡 版本號標示 (置於網頁最底端，顏色極淡) -->
+  <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
+    v2026.10.12-01
+  </div>
 
   <!-- 底部浮動購物車條 -->
   <div class="bottom-cart-bar" id="cartBar" onclick="toggleCartDrawer(true)" style="display: none;">
@@ -340,7 +345,7 @@
     <button class="checkout-btn">檢視清單 🛒</button>
   </div>
 
-  <!-- 💡 規格選單 Modal（已增加退出/取消機制） -->
+  <!-- 規格選單 Modal（點深色背景可關閉） -->
   <div class="modal-overlay" id="optionModal" onclick="closeOptionModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
       <!-- 頂部標題與 ✕ 退出按鈕 -->
@@ -388,7 +393,7 @@
     </div>
   </div>
 
-  <!-- 💡 結帳抽屜 -->
+  <!-- 結帳抽屜 -->
   <div class="drawer-overlay" id="cartDrawer" onclick="toggleCartDrawer(false)">
     <div class="drawer-content" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
