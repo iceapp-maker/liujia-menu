@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>劉家川味 - 櫃台管理系統</title>
+  
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --primary: #d32f2f;
+      --primary-dark: #b71c1c;
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #333333;
+      --gray: #888888;
+      --success: #2e7d32;
+      --warning: #f57c00;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+    body { background-color: var(--bg); color: var(--text); }
+
+    /* 登入畫面 */
+    #loginScreen {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; background: #212121; color: white;
+    }
+    .login-box {
+      background: #333; padding: 40px; border-radius: 16px; text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 90%; max-width: 360px;
+    }
+    .pin-input {
+      width: 100%; padding: 16px; font-size: 24px; text-align: center; letter-spacing: 8px;
+      border-radius: 8px; border: none; margin: 20px 0; outline: none; font-weight: bold;
+    }
+    .btn-login {
+      background: var(--primary); color: white; border: none; width: 100%; padding: 14px;
+      font-size: 16px; border-radius: 8px; font-weight: bold; cursor: pointer;
+    }
+
+    /* 後台主介面 */
+    #adminDashboard { display: none; padding-bottom: 40px; }
+    
+    .navbar {
+      background: var(--card); padding: 16px 24px; display: flex; justify-content: space-between;
+      align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 50;
+    }
+    .navbar h1 { font-size: 20px; color: var(--primary); }
+    .btn-reset {
+      background: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 8px 16px;
+      border-radius: 20px; font-size: 14px; font-weight: bold; cursor: pointer;
+    }
+
+    .tabs { display: flex; background: var(--card); border-bottom: 1px solid #ddd; }
+    .tab { flex: 1; text-align: center; padding: 16px; font-weight: bold; color: var(--gray); cursor: pointer; border-bottom: 3px solid transparent; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    .content-section { display: none; padding: 20px; max-width: 800px; margin: 0 auto; }
+    .content-section.active { display: block; }
+
+    /* 訂單卡片 */
+    .order-card {
+      background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid var(--warning);
+    }
+    .order-card.completed { border-left-color: var(--success); opacity: 0.8; }
+    .order-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 12px; }
+    .queue-num { font-size: 24px; font-weight: bold; color: var(--primary); }
+    .order-info { font-size: 14px; color: var(--gray); line-height: 1.5; }
+    
+    .item-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 15px; font-weight: 500;}
+    .item-addons { font-size: 12px; color: var(--gray); margin-left: 10px; }
+    .order-note { background: #fff3cd; padding: 8px; border-radius: 6px; font-size: 13px; color: #856404; margin: 10px 0; font-weight: bold;}
+    
+    .btn-complete {
+      background: var(--primary); color: white; border: none; padding: 10px 20px;
+      border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 16px;
+    }
+
+    /* 菜單管理 */
+    .menu-item-row {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--card); padding: 16px; border-radius: 12px; margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .menu-item-name { font-weight: bold; font-size: 16px; }
+    .menu-item-cat { font-size: 12px; color: var(--gray); }
+    
+    /* Toggle Switch */
+    .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--success); }
+    input:checked + .slider:before { transform: translateX(24px); }
+
+    /* 自訂提示框 (取代 alert/confirm) */
+    .toast {
+      visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center;
+      border-radius: 30px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px;
+      transform: translateX(-50%); font-size: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+    @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
+    @keyframes fadeout { from { bottom: 30px; opacity: 1; } to { bottom: 0; opacity: 0; } }
+
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000;
+      justify-content: center; align-items: center; padding: 20px;
+    }
+    .modal-box { background: #fff; border-radius: 16px; padding: 24px; width: 100%; max-width: 320px; text-align: center; }
+    .modal-box p { font-size: 16px; margin-bottom: 24px; line-height: 1.5; color: #333; }
+    .modal-btns { display: flex; gap: 12px; }
+    .btn-cancel { flex: 1; padding: 12px; background: #eee; border: none; border-radius: 8px; font-weight: bold; color: #555; cursor: pointer;}
+    .btn-confirm { flex: 1; padding: 12px; background: var(--primary); border: none; border-radius: 8px; font-weight: bold; color: #fff; cursor: pointer;}
+  </style>
+</head>
+<body>
+
+  <!-- 自訂 Toast 提示 -->
+  <div id="toast" class="toast">訊息內容</div>
+
+  <!-- 自訂 Confirm 視窗 -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box">
+      <p id="confirmMessage">確定要執行此操作嗎？</p>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeConfirm(false)">取消</button>
+        <button class="btn-confirm" onclick="closeConfirm(true)">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. 登入畫面 -->
+  <div id="loginScreen">
+    <div class="login-box">
+      <h2 style="margin-bottom: 8px;">店家後台登入</h2>
+      <p style="font-size: 13px; color: #aaa;">預設密碼為 1111</p>
+      <input type="password" id="pinInput" class="pin-input" placeholder="請輸入密碼" maxlength="4">
+      <button class="btn-login" onclick="verifyPin()">登入系統</button>
+    </div>
+  </div>
+
+  <!-- 2. 後台主介面 -->
+  <div id="adminDashboard">
+    <div class="navbar">
+      <h1>櫃台管理看板</h1>
+      <button class="btn-reset" onclick="triggerReset()">🌅 開始今日營業 (歸零)</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('ordersTab', this)">即時接單</div>
+      <div class="tab" onclick="switchTab('menuTab', this)">菜單售完設定</div>
+    </div>
+
+    <!-- 訂單區塊 -->
+    <div id="ordersTab" class="content-section active">
+      <h3 style="margin-bottom: 12px; color: var(--gray);">待處理訂單</h3>
+      <div id="pendingOrdersList">
+        <p style="text-align: center; color: #aaa; padding: 20px;">載入中或尚無訂單...</p>
+      </div>
+
+      <h3 style="margin: 24px 0 12px; color: var(--gray);">已完成 (今日)</h3>
+      <div id="completedOrdersList"></div>
+    </div>
+
+    <!-- 菜單管理區塊 -->
+    <div id="menuTab" class="content-section">
+      <p style="font-size: 13px; color: var(--gray); margin-bottom: 16px;">關閉開關後，顧客端將顯示「已售完」且無法點購。</p>
+      <div id="menuAdminList"></div>
+    </div>
+  </div>
+
+  <script>
+    // Firebase 初始化
+    const firebaseConfig = {
+      apiKey: "AIzaSyAm2HTW9fmse5lXnzrkMyEQQYZpAzQoHD4",
+      authDomain: "liujia-689d7.firebaseapp.com",
+      projectId: "liujia-689d7",
+      storageBucket: "liujia-689d7.firebasestorage.app",
+      messagingSenderId: "376230897719",
+      appId: "1:376230897719:web:07481db92df75494d4b7b2"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 自訂 UI 提示元件
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.innerText = message;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+
+    let confirmCallback = null;
+    function showConfirm(message, callback) {
+      document.getElementById("confirmMessage").innerText = message;
+      document.getElementById("confirmModal").style.display = "flex";
+      confirmCallback = callback;
+    }
+    function closeConfirm(result) {
+      document.getElementById("confirmModal").style.display = "none";
+      if (confirmCallback) confirmCallback(result);
+    }
+
+    async function verifyPin() {
+      const input = document.getElementById("pinInput").value;
+      if (!input) return showToast("請輸入密碼！");
+
+      const btn = document.querySelector(".btn-login");
+      btn.innerText = "驗證中...";
+      
+      try {
+        const docRef = db.collection("system_settings").doc("admin");
+        const docSnap = await docRef.get();
+        let actualPin = "1111"; // 預設密碼
+        
+        // 若雲端尚未建立密碼，自動初始化
+        if (!docSnap.exists) {
+          await docRef.set({ pin: "1111" });
+        } else {
+          actualPin = docSnap.data().pin;
+        }
+
+        if (input === actualPin) {
+          document.getElementById("loginScreen").style.display = "none";
+          document.getElementById("adminDashboard").style.display = "block";
+          showToast("登入成功！");
+          startListeningOrders();
+          startListeningMenu();
+        } else {
+          showToast("密碼錯誤，請重新輸入！");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("連線失敗，請檢查網路！");
+      } finally {
+        btn.innerText = "登入系統";
+      }
+    }
+
+    // 支援 Enter 鍵登入
+    document.getElementById("pinInput").addEventListener("keypress", function(event) {
+      if (event.key === "Enter") { event.preventDefault(); verifyPin(); }
+    });
+
+    function switchTab(tabId, el) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      el.classList.add("active");
+      document.querySelectorAll(".content-section").forEach(s => s.classList.remove("active"));
+      document.getElementById(tabId).classList.add("active");
+    }
+
+    function triggerReset() {
+      showConfirm("確定要開始新的一天營業嗎？\n這將會把取號機歸零重置為 #100 號。", async (yes) => {
+        if (!yes) return;
+        try {
+          await db.collection("system_status").doc("today").set({
+            last_queue_number: 100,
+            current_completed_number: 100
+          });
+          showToast("✅ 已成功歸零！目前的取號將從 #101 開始。");
+        } catch (err) {
+          console.error(err);
+          showToast("歸零失敗！");
+        }
+      });
+    }
+
+    function startListeningOrders() {
+      // 抓取今天的訂單（簡單以時間倒序排序，前端分類）
+      db.collection("orders").orderBy("created_at", "desc").limit(50).onSnapshot(snapshot => {
+        let pendingHtml = "";
+        let completedHtml = "";
+        
+        // 為了讓待處理的號碼由小排到大，先轉成陣列排序
+        let pendingOrders = [];
+        let completedOrders = [];
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          data.docId = doc.id;
+          if (data.status === "pending") pendingOrders.push(data);
+          else if (data.status === "completed") completedOrders.push(data);
+        });
+
+        // 待處理：先點的（號碼小）在最上面
+        pendingOrders.sort((a, b) => a.queue_number - b.queue_number);
+
+        if (pendingOrders.length === 0) {
+          pendingHtml = `<p style="text-align: center; color: #aaa; padding: 20px;">目前尚無待處理的訂單</p>`;
+        } else {
+          pendingOrders.forEach(order => pendingHtml += buildOrderCard(order, true));
+        }
+
+        if (completedOrders.length === 0) {
+          completedHtml = `<p style="text-align: center; color: #aaa; padding: 10px;">今日尚無已完成訂單</p>`;
+        } else {
+          completedOrders.forEach(order => completedHtml += buildOrderCard(order, false));
+        }
+
+        document.getElementById("pendingOrdersList").innerHTML = pendingHtml;
+        document.getElementById("completedOrdersList").innerHTML = completedHtml;
+      });
+    }
+
+    function buildOrderCard(order, isPending) {
+      const timeStr = order.created_at ? new Date(order.created_at.toDate()).toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'}) : '';
+      
+      let itemsHtml = order.items.map(item => {
+        const sizeStr = item.size ? `(${item.size})` : '';
+        const stapleStr = item.staple ? `(${item.staple})` : '';
+        const addonsStr = (item.addons && item.addons.length > 0) ? `<div class="item-addons">+ ${item.addons.map(a=>a.name).join(', ')}</div>` : '';
+        return `
+          <div style="margin-bottom: 6px;">
+            <div class="item-row">
+              <span>${item.name} ${sizeStr} ${stapleStr} <span style="color:var(--primary);">x${item.qty}</span></span>
+              <span>$${item.subtotal}</span>
+            </div>
+            ${addonsStr}
+          </div>
+        `;
+      }).join('');
+
+      const noteHtml = order.note ? `<div class="order-note">📝 備註：${order.note}</div>` : '';
+
+      return `
+        <div class="order-card ${isPending ? '' : 'completed'}">
+          <div class="order-header">
+            <div>
+              <div class="queue-num">#${order.queue_number}</div>
+              <div class="order-info">${order.table_number}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 13px; color: var(--gray);">${timeStr}</div>
+              <div style="font-size: 13px; margin-top: 4px;">${order.customer_name}</div>
+            </div>
+          </div>
+          <div>${itemsHtml}</div>
+          ${noteHtml}
+          <div style="text-align: right; font-weight: bold; margin-top: 10px; font-size: 18px; color: var(--primary);">
+            總計：$${order.total_amount}
+          </div>
+          ${isPending ? `<button class="btn-complete" onclick="completeOrder('${order.docId}', ${order.queue_number})">🔔 餐點完成 (呼叫顧客)</button>` : ''}
+        </div>
+      `;
+    }
+
+    function completeOrder(docId, queueNumber) {
+      showConfirm(`確認 #${queueNumber} 餐點已做好？\n這將會通知顧客前來取餐！`, async (yes) => {
+        if (!yes) return;
+        try {
+          await db.runTransaction(async (transaction) => {
+            // 1. 標記訂單為完成
+            const orderRef = db.collection("orders").doc(docId);
+            transaction.update(orderRef, { status: "completed" });
+
+            // 2. 更新當前完成號碼，讓顧客手機即時跳號
+            const statusRef = db.collection("system_status").doc("today");
+            transaction.update(statusRef, { current_completed_number: queueNumber });
+          });
+          showToast(`✅ #${queueNumber} 已完成，顧客手機已跳號！`);
+        } catch (err) {
+          console.error(err);
+          showToast("更新失敗，請檢查網路。");
+        }
+      });
+    }
+
+    function startListeningMenu() {
+      db.collection("menu_items").onSnapshot(snapshot => {
+        let items = [];
+        snapshot.forEach(doc => {
+          let data = doc.data();
+          data.docId = doc.id;
+          items.push(data);
+        });
+
+        // 本機按分類與名稱排序，避開 Firebase Index 報錯
+        items.sort((a, b) => {
+          if (a.category_name < b.category_name) return -1;
+          if (a.category_name > b.category_name) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        let html = "";
+        items.forEach(item => {
+          const isAvail = item.is_available !== false; // 預設為 true
+          html += `
+            <div class="menu-item-row">
+              <div>
+                <div class="menu-item-name">${item.name}</div>
+                <div class="menu-item-cat">${item.category_name}</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" ${isAvail ? 'checked' : ''} onchange="toggleItemAvailability('${item.docId}', this.checked, '${item.name}')">
+                <span class="slider"></span>
+              </label>
+            </div>
+          `;
+        });
+        document.getElementById("menuAdminList").innerHTML = html;
+      });
+    }
+
+    async function toggleItemAvailability(docId, isAvailable, itemName) {
+      try {
+        await db.collection("menu_items").doc(docId).update({ is_available: isAvailable });
+        const statusText = isAvailable ? "✅ 已上架" : "❌ 已設為售完";
+        showToast(`【${itemName}】 ${statusText}`);
+      } catch (err) {
+        console.error(err);
+        showToast("狀態更新失敗！");
+      }
+    }
+  </script>
+</body>
+</html>
