@@ -331,9 +331,9 @@
   <!-- 餐點清單容器 -->
   <div class="menu-container" id="menuContainer"></div>
   
-  <!-- 💡 版本號標示 (置於網頁最底端，顏色極淡) -->
+  <!-- 版本號標示 -->
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.12-01
+    v2026.10.12-02
   </div>
 
   <!-- 底部浮動購物車條 -->
@@ -494,15 +494,22 @@
       try { localStorage.setItem(key, val); } catch(e) {}
     }
 
-    // 初始化桌號
+    // 💡 修正後保障安全且純數字的桌號初始化
     function checkDiningSetup() {
       const params = new URLSearchParams(window.location.search);
-      const table = params.get("table");
+      let table = params.get("table");
       const type = params.get("type");
 
       if (table) {
-        setDiningStatus(`內用 - ${table} 桌`);
-      } else if (type === "takeout") {
+        // 移除非數字的所有雜亂字元，避免長網址注入 Bug
+        table = table.replace(/[^\d]/g, '');
+        if (table) {
+          setDiningStatus(`內用 - ${table} 桌`);
+          return;
+        }
+      }
+      
+      if (type === "takeout") {
         setDiningStatus("外帶顧客");
       } else {
         setDiningStatus("內用 - 1 桌");
