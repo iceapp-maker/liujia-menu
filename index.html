@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>劉家川味牛肉麵 - 手機點餐</title>
   
+  <!-- 引入 Firebase 穩定相容版 SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+
   <style>
     :root {
       --primary: #d32f2f;
@@ -46,7 +50,6 @@
       align-items: center;
       margin-bottom: 4px;
     }
-    /* 桌號標籤：改為可點擊切換 */
     .table-tag {
       font-size: 13px;
       background: var(--primary-light);
@@ -69,16 +72,16 @@
       padding: 2px 0;
     }
 
-    /* 排隊進度看板 */
+    /* 排隊進度看板（即時同步） */
     .queue-status-bar {
       display: none;
       background: #fff3cd;
       border-bottom: 1px solid #ffeeba;
-      padding: 10px 16px;
-      font-size: 13px;
+      padding: 12px 16px;
+      font-size: 14px;
       text-align: center;
     }
-    .queue-highlight { font-weight: bold; color: #856404; font-size: 15px; }
+    .queue-highlight { font-weight: bold; color: #856404; font-size: 17px; }
 
     /* 通用 Modal 背景 */
     .modal-backdrop {
@@ -260,7 +263,6 @@
   <div class="header-bar">
     <div class="store-title">
       <span>劉家川味牛肉麵</span>
-      <!-- 點擊標籤可重選桌號 -->
       <span class="table-tag" id="currentTableDisplay" onclick="openTableSelectModal()">
         <span id="tableDisplayText">選擇用餐方式</span> ▾
       </span>
@@ -268,15 +270,15 @@
     <button class="store-info-btn" onclick="toggleInfoModal(true)">營業資訊 & 注意事項 ℹ️</button>
   </div>
 
-  <!-- 排隊進度看板 -->
+  <!-- 排隊進度看板（即時同步雲端進度） -->
   <div class="queue-status-bar" id="queueStatusBar">
-    <div>您的訂單號碼：<span class="queue-highlight" id="myQueueNumber">#--</span></div>
-    <div style="margin-top: 4px; font-size: 12px; color: #666;">
-      櫃台目前完成至：<span id="completedQueueNumber" style="font-weight:bold; color:#d32f2f;">#--</span>（請留意叫號）
+    <div>您的訂單取號：<span class="queue-highlight" id="myQueueNumber">#--</span></div>
+    <div style="margin-top: 4px; font-size: 13px; color: #666;">
+      櫃台目前完成至：<span id="completedQueueNumber" style="font-weight:bold; color:#d32f2f; font-size:16px;">#--</span>（請留意叫號）
     </div>
   </div>
 
-  <!-- 用餐方式與桌號選擇彈窗（進站未選時必填） -->
+  <!-- 用餐方式選擇彈窗 -->
   <div class="modal-backdrop" id="tableSelectModal">
     <div class="center-modal-box">
       <h3>請選擇用餐方式</h3>
@@ -384,7 +386,7 @@
       </div>
 
       <div class="form-group">
-        <label>當前用餐方式（如需變更請點擊上方頂部桌號）</label>
+        <label>當前用餐方式</label>
         <input type="text" class="form-input" id="drawerDiningDisplay" readonly style="background:#f0f0f0; color:#555;">
       </div>
 
@@ -403,13 +405,31 @@
         <input type="text" class="form-input" id="orderNote" placeholder="例如：麵硬、不要酸菜">
       </div>
 
-      <button class="add-btn" style="width: 100%; padding: 14px; font-size: 16px; margin-top: 8px;" onclick="submitOrder()">
+      <button class="add-btn" id="submitOrderBtn" style="width: 100%; padding: 14px; font-size: 16px; margin-top: 8px;" onclick="submitOrder()">
         確認送出訂單
       </button>
     </div>
   </div>
 
   <script>
+    // 1. 初始化 Firebase 連線配置
+    const firebaseConfig = {
+      apiKey: "AIzaSyAm2HTW9fmse5lXnzrkMyEQQYZpAzQoHD4",
+      authDomain: "liujia-689d7.firebaseapp.com",
+      projectId: "liujia-689d7",
+      storageBucket: "liujia-689d7.firebasestorage.app",
+      messagingSenderId: "376230897719",
+      appId: "1:376230897719:web:07481db92df75494d4b7b2"
+    };
+
+    let db = null;
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+    } catch (e) {
+      console.warn("Firebase 初始化提示：", e);
+    }
+
     const MENU_DATA = [
       {
         category: "麵類",
@@ -449,7 +469,7 @@
       }
     ];
 
-    let currentDiningMode = ""; // 儲存當前桌號或外帶字串
+    let currentDiningMode = "";
     let cart = [];
     let activeItem = null;
     let modalSelectedSize = "小";
@@ -464,7 +484,6 @@
       try { localStorage.setItem(key, val); } catch(e) {}
     }
 
-    // 1. 初始化顧客桌號判定
     function checkDiningSetup() {
       const params = new URLSearchParams(window.location.search);
       const table = params.get("table");
@@ -475,7 +494,6 @@
       } else if (type === "takeout") {
         setDiningStatus("外帶顧客");
       } else {
-        // 未帶參數，彈出選擇彈窗
         openTableSelectModal();
       }
     }
@@ -507,7 +525,6 @@
       document.getElementById("tableSelectModal").style.display = "none";
     };
 
-    // 2. 初始化姓名與電話
     function initCustomerInfo() {
       const savedName = safeGet("order_cust_name");
       const savedPhone = safeGet("order_cust_phone");
@@ -515,7 +532,6 @@
       if (savedPhone) document.getElementById("custPhone").value = savedPhone;
     }
 
-    // 3. 渲染分類與菜單
     function renderTabs() {
       const tabsContainer = document.getElementById("categoryTabs");
       if (!tabsContainer) return;
@@ -733,9 +749,12 @@
       document.getElementById("infoModal").style.display = show ? "flex" : "none";
     };
 
-    window.submitOrder = function() {
+    // 2. 送出訂單：真實寫入 Firebase 並自動累加流水號
+    window.submitOrder = async function() {
       const name = document.getElementById("custName").value.trim();
       const phone = document.getElementById("custPhone").value.trim();
+      const note = document.getElementById("orderNote").value.trim();
+      const btn = document.getElementById("submitOrderBtn");
 
       if (!currentDiningMode) {
         alert("請先選擇用餐方式（內用桌號或外帶）！");
@@ -751,8 +770,56 @@
       safeSet("order_cust_name", name);
       safeSet("order_cust_phone", phone);
 
-      const queueNumber = Math.floor(100 + Math.random() * 900);
-      alert(`點餐成功！您的取號是 #${queueNumber}（${currentDiningMode}）`);
+      btn.disabled = true;
+      btn.innerText = "訂單送出中...";
+
+      let finalQueueNumber = 101;
+
+      try {
+        if (db) {
+          // 使用事務交易確保序號絕對不重複且精準遞增
+          const statusRef = db.collection("system_status").doc("today");
+          
+          await db.runTransaction(async (transaction) => {
+            const statusDoc = await transaction.get(statusRef);
+            if (!statusDoc.exists) {
+              finalQueueNumber = 101;
+              transaction.set(statusRef, {
+                last_queue_number: 101,
+                current_completed_number: 100
+              });
+            } else {
+              const currentNum = statusDoc.data().last_queue_number || 100;
+              finalQueueNumber = currentNum + 1;
+              transaction.update(statusRef, {
+                last_queue_number: finalQueueNumber
+              });
+            }
+
+            // 建立訂單
+            const newOrderRef = db.collection("orders").doc();
+            transaction.set(newOrderRef, {
+              queue_number: finalQueueNumber,
+              table_number: currentDiningMode,
+              customer_name: name,
+              customer_phone: phone,
+              note: note,
+              items: cart,
+              total_amount: cart.reduce((sum, i) => sum + i.subtotal, 0),
+              status: "pending", // 待處理
+              created_at: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+        }
+      } catch (err) {
+        console.error("Firestore 寫入錯誤：", err);
+        alert("提醒：請確認 Firebase 後台的 Firestore 資料庫已建立！");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "確認送出訂單";
+      }
+
+      alert(`點餐成功！您的取號是 #${finalQueueNumber}（${currentDiningMode}）`);
 
       cart = [];
       updateCartDisplay();
@@ -760,15 +827,30 @@
 
       const banner = document.getElementById("queueStatusBar");
       banner.style.display = "block";
-      document.getElementById("myQueueNumber").innerText = `#${queueNumber}`;
-      document.getElementById("completedQueueNumber").innerText = `#${queueNumber - 1}`;
+      document.getElementById("myQueueNumber").innerText = `#${finalQueueNumber}`;
+
+      // 開始即時監聽後台叫號進度
+      startLiveQueueListening();
     };
 
-    // 啟動程序
+    // 3. 即時監聽雲端叫號狀態
+    function startLiveQueueListening() {
+      if (!db) return;
+      db.collection("system_status").doc("today").onSnapshot((doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          const compNum = data.current_completed_number || "--";
+          document.getElementById("completedQueueNumber").innerText = `#${compNum}`;
+        }
+      });
+    }
+
+    // 頁面載入啟動
     initCustomerInfo();
     renderTabs();
     renderMenu(MENU_DATA[0].category);
     checkDiningSetup();
+    startLiveQueueListening();
   </script>
 </body>
 </html>
