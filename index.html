@@ -378,7 +378,7 @@
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.12-SmartDashboard
+    v2026.10.12-AutoRestore
   </div>
 
   <!-- 規格選單 Modal -->
@@ -831,6 +831,7 @@
 
       // 備份購物車供退回修改使用
       safeSet("last_cart_backup", JSON.stringify(cart));
+      safeSet("active_order_doc_id", newDocId); // 💡 記錄當前活動訂單的雲端專屬 ID
       
       myCurrentOrderDocId = newDocId;
       myCurrentQueueNum = finalQueueNumber;
@@ -926,9 +927,53 @@
     function resetToMenu() {
        myCurrentOrderDocId = null;
        myCurrentQueueNum = null;
+       safeSet("active_order_doc_id", ""); // 💡 訂單結束，清除本機記憶
        document.getElementById("orderDashboardSection").style.display = "none";
        document.getElementById("orderingSection").style.display = "block";
     }
+
+    // 💡 斷線重連：還原未完成的訂單畫面
+    window.restoreActiveOrder = async function() {
+      const savedDocId = safeGet("active_order_doc_id");
+      if (!savedDocId || !window.firebaseDb) return;
+
+      try {
+        const docSnap = await window.firebaseDb.collection("orders").doc(savedDocId).get();
+        if (docSnap.exists) {
+          const data = docSnap.data();
+          if (data.status === "pending") {
+            // 訂單還在處理中，還原儀表板畫面！
+            myCurrentOrderDocId = savedDocId;
+            myCurrentQueueNum = data.queue_number;
+            cart = data.items || [];
+            
+            document.getElementById("orderingSection").style.display = "none";
+            document.getElementById("orderDashboardSection").style.display = "block";
+            document.getElementById("dashboardMyNum").innerText = data.queue_number;
+            
+            // 重建訂單明細
+            document.getElementById("dashboardOrderItems").innerHTML = cart.map(item => `
+              <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px dashed #eee; padding-bottom:8px;">
+                <div>
+                  <strong>${item.name}</strong> ${item.size ? `(${item.size})` : ''} 
+                  <span style="color:var(--primary); font-weight:bold;">x${item.qty}</span>
+                  <div style="font-size:12px; color:#888; margin-top:2px;">${(item.addons||[]).map(a=>a.name).join(', ')}</div>
+                </div>
+                <div style="font-weight:bold;">$${item.subtotal}</div>
+              </div>
+            `).join('');
+            document.getElementById("dashboardTotal").innerText = data.total_amount;
+            
+            updateDashboardStatus();
+          } else {
+            // 訂單已完成或作廢，清除記憶
+            safeSet("active_order_doc_id", "");
+          }
+        }
+      } catch (err) {
+        console.log("還原訂單失敗:", err);
+      }
+    };
 
   </script>
 
@@ -953,6 +998,11 @@
           loadMenuFromFirebase();
           initCustomerInfo();
           checkDiningSetup();
+          
+          // 💡 檢查是否有未完成的訂單需要還原畫面
+          if (window.restoreActiveOrder) {
+            window.restoreActiveOrder();
+          }
 
           // 即時監聽櫃台號碼
           window.firebaseDb.collection("system_status").doc("today").onSnapshot((doc) => {
