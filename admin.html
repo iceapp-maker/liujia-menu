@@ -139,6 +139,23 @@
       </div>
     </div>
   </div>
+
+  <!-- 新增：換桌專用彈窗 -->
+  <div class="modal-overlay" id="changeTableModal">
+    <div class="modal-box">
+      <h3 style="margin-bottom: 15px; color: var(--primary);">為客人更改桌號</h3>
+      <p id="currentTableDisplay" style="font-size: 14px; color: #555; margin-bottom: 10px; font-weight: bold;">目前：</p>
+      <select id="newTableSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; margin-bottom: 20px;">
+        <option value="1">第 1 桌</option><option value="2">第 2 桌</option><option value="3">第 3 桌</option>
+        <option value="4">第 4 桌</option><option value="5">第 5 桌</option><option value="6">第 6 桌</option>
+        <option value="7">第 7 桌</option><option value="8">第 8 桌</option>
+      </select>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeChangeTableModal()">取消</button>
+        <button class="btn-confirm" onclick="confirmChangeTable()">確認換桌</button>
+      </div>
+    </div>
+  </div>
 <!-- [Section 3: HTML 共用元件與彈窗] End -->
 
 <!-- [Section 4: HTML 登入畫面] Start -->
@@ -285,18 +302,15 @@
 
 <!-- [Section 8: JS 訂單接單與叫號邏輯] Start -->
     function startListeningOrders() {
-      // 抓取今天的訂單（簡單以時間倒序排序，前端分類）
+      // 抓取今天的訂單
       db.collection("orders").orderBy("created_at", "desc").limit(50).onSnapshot(snapshot => {
-        let pendingHtml = "";
-        let completedHtml = "";
-        
-        // 為了讓待處理的號碼由小排到大，先轉成陣列排序
         let pendingOrders = [];
         let completedOrders = [];
 
         snapshot.forEach(doc => {
           const data = doc.data();
           data.docId = doc.id;
+          // 注意：結帳後的狀態會變成 "closed"，所以會自動從這兩個列表中消失
           if (data.status === "pending") pendingOrders.push(data);
           else if (data.status === "completed") completedOrders.push(data);
         });
@@ -304,61 +318,49 @@
         // 待處理：先點的（號碼小）在最上面
         pendingOrders.sort((a, b) => a.queue_number - b.queue_number);
 
-        if (pendingOrders.length === 0) {
-          pendingHtml = `<p style="text-align: center; color: #aaa; padding: 20px;">目前尚無待處理的訂單</p>`;
-        } else {
-          pendingOrders.forEach(order => pendingHtml += buildOrderCard(order, true));
-        }
+        document.getElementById("pendingOrdersList").innerHTML = pendingOrders.length === 0 ? 
+          `<p style="text-align: center; color: #aaa; padding: 20px;">目前尚無待處理的訂單</p>` : 
+          pendingOrders.map(order => buildOrderCard(order, true)).join('');
 
-        if (completedOrders.length === 0) {
-          completedHtml = `<p style="text-align: center; color: #aaa; padding: 10px;">今日尚無已完成訂單</p>`;
-        } else {
-          completedOrders.forEach(order => completedHtml += buildOrderCard(order, false));
-        }
-
-        document.getElementById("pendingOrdersList").innerHTML = pendingHtml;
-        document.getElementById("completedOrdersList").innerHTML = completedHtml;
+        document.getElementById("completedOrdersList").innerHTML = completedOrders.length === 0 ? 
+          `<p style="text-align: center; color: #aaa; padding: 10px;">尚未有待結帳的完成訂單</p>` : 
+          completedOrders.map(order => buildOrderCard(order, false)).join('');
       });
     }
 
     function buildOrderCard(order, isPending) {
       const timeStr = order.created_at ? new Date(order.created_at.toDate()).toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'}) : '';
+      const isDineIn = order.table_number.includes("內用");
       
-      let itemsHtml = order.items.map(item => {
-        const sizeStr = item.size ? `(${item.size})` : '';
-        const stapleStr = item.staple ? `(${item.staple})` : '';
-        const addonsStr = (item.addons && item.addons.length > 0) ? `<div class="item-addons">+ ${item.addons.map(a=>a.name).join(', ')}</div>` : '';
-        return `
-          <div style="margin-bottom: 6px;">
-            <div class="item-row">
-              <span>${item.name} ${sizeStr} ${stapleStr} <span style="color:var(--primary);">x${item.qty}</span></span>
-              <span>$${item.subtotal}</span>
-            </div>
-            ${addonsStr}
+      let itemsHtml = order.items.map(item => `
+        <div style="margin-bottom: 6px;">
+          <div class="item-row">
+            <span>${item.name} ${item.size ? `(${item.size})` : ''} <span style="color:var(--primary);">x${item.qty}</span></span>
+            <span>$${item.subtotal}</span>
           </div>
-        `;
-      }).join('');
+          ${(item.addons && item.addons.length > 0) ? `<div class="item-addons">+ ${item.addons.map(a=>a.name).join(', ')}</div>` : ''}
+        </div>
+      `).join('');
 
-      const noteHtml = order.note ? `<div class="order-note">📝 備註：${order.note}</div>` : '';
+      // 建立按鈕區塊
+      let primaryBtn = isPending ? `<button class="btn-complete" onclick="completeOrder('${order.docId}', ${order.queue_number})">🔔 餐點完成 (呼叫顧客)</button>` : '';
+      let secondaryBtns = '';
+      if (isDineIn) {
+        secondaryBtns += `<button style="flex: 1; padding: 10px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="openChangeTableModal('${order.docId}', '${order.table_number}')">🔄 換桌</button>`;
+      }
+      secondaryBtns += `<button style="flex: 1; padding: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="checkoutOrder('${order.docId}', '${order.table_number}')">💰 結帳/清桌</button>`;
 
       return `
         <div class="order-card ${isPending ? '' : 'completed'}">
           <div class="order-header">
-            <div>
-              <div class="queue-num">#${order.queue_number}</div>
-              <div class="order-info">${order.table_number}</div>
-            </div>
-            <div style="text-align: right;">
-              <div style="font-size: 13px; color: var(--gray);">${timeStr}</div>
-              <div style="font-size: 13px; margin-top: 4px;">${order.customer_name}</div>
-            </div>
+            <div><div class="queue-num">#${order.queue_number}</div><div class="order-info">${order.table_number}</div></div>
+            <div style="text-align: right;"><div style="font-size: 13px; color: var(--gray);">${timeStr}</div><div style="font-size: 13px; margin-top: 4px;">${order.customer_name}</div></div>
           </div>
           <div>${itemsHtml}</div>
-          ${noteHtml}
-          <div style="text-align: right; font-weight: bold; margin-top: 10px; font-size: 18px; color: var(--primary);">
-            總計：$${order.total_amount}
-          </div>
-          ${isPending ? `<button class="btn-complete" onclick="completeOrder('${order.docId}', ${order.queue_number})">🔔 餐點完成 (呼叫顧客)</button>` : ''}
+          ${order.note ? `<div class="order-note">📝 備註：${order.note}</div>` : ''}
+          <div style="text-align: right; font-weight: bold; margin-top: 10px; font-size: 18px; color: var(--primary);">總計：$${order.total_amount}</div>
+          ${primaryBtn}
+          <div style="display: flex; gap: 10px; margin-top: 10px;">${secondaryBtns}</div>
         </div>
       `;
     }
@@ -368,20 +370,59 @@
         if (!yes) return;
         try {
           await db.runTransaction(async (transaction) => {
-            // 1. 標記訂單為完成
-            const orderRef = db.collection("orders").doc(docId);
-            transaction.update(orderRef, { status: "completed" });
-
-            // 2. 更新當前完成號碼，讓顧客手機即時跳號
-            const statusRef = db.collection("system_status").doc("today");
-            transaction.update(statusRef, { current_completed_number: queueNumber });
+            transaction.update(db.collection("orders").doc(docId), { status: "completed" });
+            transaction.update(db.collection("system_status").doc("today"), { current_completed_number: queueNumber });
           });
-          showToast(`✅ #${queueNumber} 已完成，顧客手機已跳號！`);
-        } catch (err) {
-          console.error(err);
-          showToast("更新失敗，請檢查網路。");
-        }
+          showToast(`✅ #${queueNumber} 已完成，手機已跳號！`);
+        } catch (err) { showToast("更新失敗，請檢查網路。"); }
       });
+    }
+
+    // --- 新增：結帳與換桌邏輯 ---
+    function checkoutOrder(docId, tableStr) {
+      showConfirm(`確認顧客已付款並要「結帳清桌」嗎？\n(結帳後此訂單將歸檔並從看板移除)`, async (yes) => {
+        if (!yes) return;
+        try {
+          await db.runTransaction(async (transaction) => {
+            // 1. 訂單狀態改為 closed (歸檔)
+            transaction.update(db.collection("orders").doc(docId), { status: "closed", paid_at: firebase.firestore.FieldValue.serverTimestamp() });
+            
+            // 2. 如果是內用，將該桌號狀態改回 idle (空閒)
+            const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
+            if (match) {
+              const tablesRef = db.collection("system_status").doc("tables");
+              transaction.set(tablesRef, { [match[1]]: "idle" }, { merge: true });
+            }
+          });
+          showToast("✅ 已成功結帳並釋放桌位！");
+        } catch (err) { console.error(err); showToast("結帳失敗。"); }
+      });
+    }
+
+    let activeChangeTableDocId = null, activeChangeTableOldNum = null;
+    function openChangeTableModal(docId, tableStr) {
+      const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
+      if (!match) return; 
+      activeChangeTableOldNum = match[1];
+      activeChangeTableDocId = docId;
+      document.getElementById("currentTableDisplay").innerText = `目前：第 ${activeChangeTableOldNum} 桌`;
+      document.getElementById("changeTableModal").style.display = "flex";
+    }
+    function closeChangeTableModal() { document.getElementById("changeTableModal").style.display = "none"; }
+
+    async function confirmChangeTable() {
+      const newNum = document.getElementById("newTableSelect").value;
+      if (newNum === activeChangeTableOldNum) return showToast("相同桌號！");
+      try {
+        await db.runTransaction(async (transaction) => {
+          transaction.update(db.collection("orders").doc(activeChangeTableDocId), { table_number: `內用 - ${newNum} 桌` });
+          transaction.set(db.collection("system_status").doc("tables"), { 
+            [activeChangeTableOldNum]: "idle", [newNum]: "occupied" 
+          }, { merge: true });
+        });
+        showToast(`✅ 已成功換至第 ${newNum} 桌！`);
+        closeChangeTableModal();
+      } catch (err) { showToast("換桌失敗。"); }
     }
 <!-- [Section 8: JS 訂單接單與叫號邏輯] End -->
 
