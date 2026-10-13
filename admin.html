@@ -310,7 +310,7 @@
         snapshot.forEach(doc => {
           const data = doc.data();
           data.docId = doc.id;
-          // 注意：結帳後的狀態會變成 "closed"，所以會自動從這兩個列表中消失
+          // 💡 修正：不再隱藏結帳單子，只要是 pending 或 completed 都會留在畫面上
           if (data.status === "pending") pendingOrders.push(data);
           else if (data.status === "completed") completedOrders.push(data);
         });
@@ -323,7 +323,7 @@
           pendingOrders.map(order => buildOrderCard(order, true)).join('');
 
         document.getElementById("completedOrdersList").innerHTML = completedOrders.length === 0 ? 
-          `<p style="text-align: center; color: #aaa; padding: 10px;">尚未有待結帳的完成訂單</p>` : 
+          `<p style="text-align: center; color: #aaa; padding: 10px;">今日尚無已完成訂單</p>` : 
           completedOrders.map(order => buildOrderCard(order, false)).join('');
       });
     }
@@ -342,13 +342,22 @@
         </div>
       `).join('');
 
-      // 建立按鈕區塊
+      // 建立主要按鈕 (餐點完成)
       let primaryBtn = isPending ? `<button class="btn-complete" onclick="completeOrder('${order.docId}', ${order.queue_number})">🔔 餐點完成 (呼叫顧客)</button>` : '';
+      
+      // 建立次要按鈕區 (換桌、結帳)
       let secondaryBtns = '';
-      if (isDineIn) {
+      if (isDineIn && !order.is_paid) {
         secondaryBtns += `<button style="flex: 1; padding: 10px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="openChangeTableModal('${order.docId}', '${order.table_number}')">🔄 換桌</button>`;
       }
-      secondaryBtns += `<button style="flex: 1; padding: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="checkoutOrder('${order.docId}', '${order.table_number}')">💰 結帳/清桌</button>`;
+
+      // 💡 修正：動態判斷結帳狀態與內外帶文字
+      if (order.is_paid) {
+        secondaryBtns += `<div style="flex: 1; padding: 10px; text-align: center; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold;">✅ 已結帳付款</div>`;
+      } else {
+        let btnText = isDineIn ? "💰 結帳 / 清桌" : "💰 外帶結帳";
+        secondaryBtns += `<button style="flex: 1; padding: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="checkoutOrder('${order.docId}', '${order.table_number}', ${isDineIn})">${btnText}</button>`;
+      }
 
       return `
         <div class="order-card ${isPending ? '' : 'completed'}">
@@ -378,23 +387,29 @@
       });
     }
 
-    // --- 新增：結帳與換桌邏輯 ---
-    function checkoutOrder(docId, tableStr) {
-      showConfirm(`確認顧客已付款並要「結帳清桌」嗎？\n(結帳後此訂單將歸檔並從看板移除)`, async (yes) => {
+    // 💡 修正：結帳與換桌邏輯，區分內外帶
+    function checkoutOrder(docId, tableStr, isDineIn) {
+      const confirmMsg = isDineIn ? 
+        "確認內用顧客已付款走人，並要「結帳且清空桌位」嗎？\n(桌位將會釋放給下一組客人)" : 
+        "確認外帶顧客已付款結帳嗎？";
+
+      showConfirm(confirmMsg, async (yes) => {
         if (!yes) return;
         try {
           await db.runTransaction(async (transaction) => {
-            // 1. 訂單狀態改為 closed (歸檔)
-            transaction.update(db.collection("orders").doc(docId), { status: "closed", paid_at: firebase.firestore.FieldValue.serverTimestamp() });
+            // 1. 不改變 status (讓單子留在畫面上)，而是加上 is_paid 標記
+            transaction.update(db.collection("orders").doc(docId), { is_paid: true, paid_at: firebase.firestore.FieldValue.serverTimestamp() });
             
-            // 2. 如果是內用，將該桌號狀態改回 idle (空閒)
-            const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
-            if (match) {
-              const tablesRef = db.collection("system_status").doc("tables");
-              transaction.set(tablesRef, { [match[1]]: "idle" }, { merge: true });
+            // 2. 只有內用需要清桌釋放狀態
+            if (isDineIn) {
+              const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
+              if (match) {
+                const tablesRef = db.collection("system_status").doc("tables");
+                transaction.set(tablesRef, { [match[1]]: "idle" }, { merge: true });
+              }
             }
           });
-          showToast("✅ 已成功結帳並釋放桌位！");
+          showToast("✅ 已成功結帳！");
         } catch (err) { console.error(err); showToast("結帳失敗。"); }
       });
     }
@@ -425,7 +440,6 @@
       } catch (err) { showToast("換桌失敗。"); }
     }
 <!-- [Section 8: JS 訂單接單與叫號邏輯] End -->
-
 <!-- [Section 9: JS 菜單開關邏輯] Start -->
     function startListeningMenu() {
       db.collection("menu_items").onSnapshot(snapshot => {
