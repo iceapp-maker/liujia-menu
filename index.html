@@ -178,7 +178,7 @@
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.13-Structured
+    v2026.10.13-FixTableRestore
   </div>
 <!-- [Section 5: HTML 智慧訂單狀態儀表板] End -->
 
@@ -525,6 +525,7 @@
 <!-- [Section 9: JS 購物車與送單邏輯] End -->
 
 <!-- [Section 10: JS Firebase 監聽與還原] Start -->
+  <script>
     window.restoreActiveOrder = async function() {
       const savedDocId = safeGet("active_order_doc_id");
       if (!savedDocId || !window.firebaseDb) return;
@@ -534,6 +535,10 @@
           const data = docSnap.data();
           if (data.status === "pending") {
             myCurrentOrderDocId = savedDocId; myCurrentQueueNum = data.queue_number; cart = data.items || [];
+            
+            // 💡 修復點：將雲端訂單裡的桌號抓出來，覆蓋掉預設的「內用 - 1 桌」
+            if (data.table_number) setDiningStatus(data.table_number);
+
             document.getElementById("orderingSection").style.display = "none"; document.getElementById("orderDashboardSection").style.display = "block";
             document.getElementById("dashboardMyNum").innerText = data.queue_number;
             document.getElementById("dashboardOrderItems").innerHTML = cart.map(item => `<div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px dashed #eee; padding-bottom:8px;"><div><strong>${item.name}</strong> ${item.size ? `(${item.size})` : ''} <span style="color:var(--primary); font-weight:bold;">x${item.qty}</span><div style="font-size:12px; color:#888; margin-top:2px;">${(item.addons||[]).map(a=>a.name).join(', ')}</div></div><div style="font-weight:bold;">$${item.subtotal}</div></div>`).join('');
