@@ -1,3 +1,4 @@
+<!-- [Section 1: 網頁宣告與資源引用] Start -->
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -5,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>劉家川味牛肉麵 - 手機點餐</title>
 
+<!-- [Section 1: 網頁宣告與資源引用] End -->
+<!-- [Section 2: CSS 樣式設定] Start -->
   <style>
     :root {
       --primary: #d32f2f; --primary-light: #ffebee; --text: #212121; --gray: #666666;
@@ -66,8 +69,9 @@
   </style>
 </head>
 <body>
+<!-- [Section 2: CSS 樣式設定] End -->
 
-  <!-- 完美升級：自訂提示/確認彈窗 (取代原生 alert/confirm) -->
+<!-- [Section 3: HTML 頂部導覽與基本彈窗] Start -->
   <div class="modal-backdrop" id="customAlertModal" style="z-index: 9999;">
     <div class="center-modal-box">
       <h3 id="customAlertTitle">提示</h3>
@@ -99,7 +103,9 @@
       <button class="add-btn" style="width: 100%; margin-top: 10px;" onclick="toggleInfoModal(false)">關閉</button>
     </div>
   </div>
+<!-- [Section 3: HTML 頂部導覽與基本彈窗] End -->
 
+<!-- [Section 4: HTML 點餐區域與購物車入口] Start -->
   <div id="orderingSection">
     <div class="category-tabs" id="categoryTabs"></div>
 
@@ -114,15 +120,15 @@
       <button class="checkout-btn">檢視清單 🛒</button>
     </div>
   </div>
+<!-- [Section 4: HTML 點餐區域與購物車入口] End -->
 
-  <!-- 狀態儀表板 -->
+<!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
   <div id="orderDashboardSection" style="display: none; padding: 20px 16px; max-width: 600px; margin: 0 auto; text-align: center; animation: slideUp 0.3s ease;">
     <h2 style="color: var(--primary); margin-bottom: 15px;">✅ 訂單已成功送出</h2>
     
     <div style="background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 20px; border: 1px solid var(--border);">
       <p style="font-size: 15px; color: #555; margin-bottom: 5px;">您的訂單取號</p>
       <div style="font-size: 52px; font-weight: bold; color: var(--primary); margin: 0; line-height: 1;">#<span id="dashboardMyNum">--</span></div>
-      <!-- 💡 修改文案避免誤導 -->
       <p style="font-size: 14px; color: #888; margin-top: 10px;">📢 最新取餐叫號：<span id="dashboardCompletedNum" style="font-weight:bold; color:var(--primary); font-size:18px;">#--</span></p>
     </div>
     
@@ -137,10 +143,11 @@
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.13-AutoAddon
+    v2026.10.13-FixTransaction
   </div>
+<!-- [Section 5: HTML 智慧訂單狀態儀表板] End -->
 
-  <!-- 規格選單 Modal -->
+<!-- [Section 6: HTML 選購視窗與結帳抽屜] Start -->
   <div class="modal-overlay" id="optionModal" onclick="closeOptionModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -168,7 +175,6 @@
     </div>
   </div>
 
-  <!-- 結帳抽屜 -->
   <div class="drawer-overlay" id="cartDrawer" onclick="toggleCartDrawer(false)">
     <div class="drawer-content" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -190,14 +196,15 @@
       </div>
     </div>
   </div>
+<!-- [Section 6: HTML 選購視窗與結帳抽屜] End -->
 
+<!-- [Section 7: JS 全域變數與初始化] Start -->
   <script>
     let MENU_DATA = []; let isRiceAvailable = true; 
     let currentDiningMode = "外帶顧客"; 
     let cart = []; let myCurrentOrderDocId = null; let myCurrentQueueNum = null; let globalCompletedNum = 0;
     let activeItem = null; let modalSelectedSize = "小"; let modalSelectedAddons = []; let modalQty = 1;
     
-    // 自訂 Alert/Confirm 邏輯
     let alertCallback = null;
     function customAlert(msg, title = "提示") {
       document.getElementById("customAlertTitle").innerText = title; document.getElementById("customAlertMessage").innerText = msg;
@@ -232,7 +239,9 @@
     function initCustomerInfo() {
       document.getElementById("custName").value = safeGet("order_cust_name"); document.getElementById("custPhone").value = safeGet("order_cust_phone");
     }
+<!-- [Section 7: JS 全域變數與初始化] End -->
 
+<!-- [Section 8: JS 菜單渲染與選項邏輯] Start -->
     async function loadMenuFromFirebase() {
       try {
         const catSnap = await window.firebaseDb.collection("menu_categories").get();
@@ -287,7 +296,9 @@
     window.toggleAddon = (name, price, el) => { const idx = modalSelectedAddons.findIndex(a => a.name === name); if (idx > -1) { modalSelectedAddons.splice(idx, 1); el.classList.remove("selected"); } else { modalSelectedAddons.push({ name, price }); el.classList.add("selected"); } updateModalPrice(); };
     window.adjustModalQty = (delta) => { const min = activeItem.min_qty ? activeItem.min_qty : 1; if (modalQty + delta >= min) { modalQty += delta; document.getElementById("modalQtyDisplay").innerText = modalQty; updateModalPrice(); } };
     function updateModalPrice() { let base = activeItem.type === "size" ? (modalSelectedSize === "小" ? activeItem.price_small : activeItem.price_large) : (activeItem.price || 0); let total = (base + modalSelectedAddons.reduce((sum, a) => sum + a.price, 0)) * modalQty; document.getElementById("modalFinalPrice").innerText = total; }
+<!-- [Section 8: JS 菜單渲染與選項邏輯] End -->
 
+<!-- [Section 9: JS 購物車與送單邏輯] Start -->
     window.confirmAddToCart = function() {
       let base = activeItem.type === "size" ? (modalSelectedSize === "小" ? activeItem.price_small : activeItem.price_large) : (activeItem.price || 0);
       let addonTotal = modalSelectedAddons.reduce((sum, a) => sum + a.price, 0);
@@ -302,7 +313,12 @@
 
     window.toggleCartDrawer = (open) => {
       document.getElementById("cartDrawer").style.display = open ? "flex" : "none";
-      if (open) { renderDrawerList(); const isDineIn = currentDiningMode.includes("內用"); document.getElementById("nameFormGroup").style.display = isDineIn ? "none" : "block"; document.getElementById("phoneFormGroup").style.display = isDineIn ? "none" : "block"; }
+      if (open) { 
+        renderDrawerList(); 
+        const isDineIn = currentDiningMode.includes("內用"); 
+        document.getElementById("nameFormGroup").style.display = isDineIn ? "none" : "block"; 
+        document.getElementById("phoneFormGroup").style.display = isDineIn ? "none" : "block"; 
+      }
     };
 
     function renderDrawerList() {
@@ -344,35 +360,42 @@
           await window.firebaseDb.runTransaction(async (transaction) => {
             const statusRef = window.firebaseDb.collection("system_status").doc("today");
             const tablesRef = window.firebaseDb.collection("system_status").doc("tables");
-            const statusDoc = await transaction.get(statusRef);
             
-            if (!statusDoc.exists) { transaction.set(statusRef, { last_queue_number: 101, current_completed_number: 100 }); } 
-            else { finalQueueNumber = (statusDoc.data().last_queue_number || 100) + 1; transaction.update(statusRef, { last_queue_number: finalQueueNumber }); }
+            // 💡 修正錯誤：在 Transaction 裡，所有的 get() 必須在任何 set() 或 update() 之前執行！
+            const statusDoc = await transaction.get(statusRef);
+            const tablesDoc = await transaction.get(tablesRef);
+            
+            // 處理排隊號碼寫入
+            if (!statusDoc.exists) { 
+              transaction.set(statusRef, { last_queue_number: 101, current_completed_number: 100 }); 
+            } else { 
+              finalQueueNumber = (statusDoc.data().last_queue_number || 100) + 1; 
+              transaction.update(statusRef, { last_queue_number: finalQueueNumber }); 
+            }
             
             const newOrderRef = window.firebaseDb.collection("orders").doc();
             newDocId = newOrderRef.id;
 
-            // 💡 核心優化：智慧偵測加單！
+            // 處理桌號寫入與加單判斷
             let finalTableString = currentDiningMode;
             if (isDineIn) {
               const tableMatch = currentDiningMode.match(/內用\s*-\s*(\d+)\s*桌/);
               if (tableMatch) {
                 const tableNum = tableMatch[1];
-                const tablesDoc = await transaction.get(tablesRef);
-                // 如果這桌已經 occupied，就把送出的字串加上 (加單)
+                // 檢查是否已被佔用，如果是就加上(加單)，否則就標記為佔用
                 if (tablesDoc.exists && tablesDoc.data()[tableNum] === "occupied") {
                   finalTableString = currentDiningMode + " (加單)";
                 } else {
-                  // 如果原本沒人，就佔用桌子
                   transaction.set(tablesRef, { [tableNum]: "occupied" }, { merge: true });
                 }
               }
             }
 
+            // 建立訂單
             transaction.set(newOrderRef, { queue_number: finalQueueNumber, table_number: finalTableString, customer_name: (isDineIn && !name) ? "內用顧客" : name, customer_phone: (isDineIn && !phone) ? "無" : phone, note: document.getElementById("orderNote").value.trim(), items: cart, total_amount: cart.reduce((sum, i) => sum + i.subtotal, 0), status: "pending", created_at: firebase.firestore.FieldValue.serverTimestamp() });
           });
         }
-      } catch (err) { customAlert("送出失敗，請檢查網路連線。"); btn.disabled = false; btn.innerText = "確認送出訂單"; return; }
+      } catch (err) { console.error(err); customAlert("送出失敗，請檢查網路連線。"); btn.disabled = false; btn.innerText = "確認送出訂單"; return; }
 
       safeSet("last_cart_backup", JSON.stringify(cart)); safeSet("active_order_doc_id", newDocId); 
       myCurrentOrderDocId = newDocId; myCurrentQueueNum = finalQueueNumber;
@@ -400,7 +423,6 @@
          try {
             if (window.firebaseDb && myCurrentOrderDocId) {
                await window.firebaseDb.collection("orders").doc(myCurrentOrderDocId).update({ status: "cancelled" });
-               // 注意：這裡先不主動將桌號設為 idle，因為可能是客人自己要改菜而已，桌子他還佔著
             }
             const backup = safeGet("last_cart_backup"); if (backup) cart = JSON.parse(backup);
             resetToMenu(); updateCartDisplay(); toggleCartDrawer(true); 
@@ -412,7 +434,9 @@
        myCurrentOrderDocId = null; myCurrentQueueNum = null; safeSet("active_order_doc_id", "");
        document.getElementById("orderDashboardSection").style.display = "none"; document.getElementById("orderingSection").style.display = "block";
     };
+<!-- [Section 9: JS 購物車與送單邏輯] End -->
 
+<!-- [Section 10: JS Firebase 監聽與還原] Start -->
     window.restoreActiveOrder = async function() {
       const savedDocId = safeGet("active_order_doc_id"); if (!savedDocId || !window.firebaseDb) return;
       try {
@@ -461,3 +485,4 @@
   </script>
 </body>
 </html>
+<!-- [Section 10: JS Firebase 監聽與還原] End -->
