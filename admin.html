@@ -418,15 +418,24 @@
         if (!yes) return;
         try {
           await db.runTransaction(async (transaction) => {
+            const statusRef = db.collection("system_status").doc("today");
+            const statusDoc = await transaction.get(statusRef);
+            
+            // 標記訂單為已完成
             transaction.update(db.collection("orders").doc(docId), { status: "completed" });
-            transaction.update(db.collection("system_status").doc("today"), { current_completed_number: queueNumber });
+            
+            // 💡 防呆：確保跳號機數字只升不降
+            const currentCompleted = statusDoc.exists ? (statusDoc.data().current_completed_number || 0) : 0;
+            if (queueNumber > currentCompleted) {
+              transaction.update(statusRef, { current_completed_number: queueNumber });
+            }
           });
           showToast(`✅ #${queueNumber} 已完成，手機已跳號！`);
         } catch (err) { showToast("更新失敗，請檢查網路。"); }
       });
     }
 
-    // 💡 修改：結帳時自動連動出餐邏輯
+    // 💡 結帳自動連動出餐邏輯
     function checkoutOrder(docId, tableStr, isDineIn) {
       let ordersToCheckout = [];
       let totalAmountToCollect = 0;
@@ -458,7 +467,7 @@
       showConfirm(displayMessage, async (yes) => {
         if (!yes) return;
         try {
-          let highestQueueNumberToComplete = 0; // 記錄需要推進的最大叫號機號碼
+          let highestQueueNumberToComplete = 0;
 
           await db.runTransaction(async (transaction) => {
             for (const order of ordersToCheckout) {
@@ -467,7 +476,7 @@
                 paid_at: firebase.firestore.FieldValue.serverTimestamp() 
               };
 
-              // 💡 核心連動：如果結帳時這張單還在 pending，就強制把它變成 completed，並記錄號碼準備推動叫號機
+              // 如果結帳時這張單還在 pending，強制完單並記錄最高號碼
               if (order.status === "pending") {
                 updateData.status = "completed";
                 if (order.queue_number > highestQueueNumberToComplete) {
@@ -478,7 +487,7 @@
               transaction.update(db.collection("orders").doc(order.docId), updateData);
             }
             
-            // 釋放桌位
+            // 內用清桌釋放
             if (isDineIn) {
               const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
               if (match) {
@@ -487,12 +496,13 @@
               }
             }
 
-            // 💡 如果有包含未出餐的訂單，一併更新前台叫號機
+            // 💡 若有連動出餐，同步推進前台叫號機 (並加入不倒退防呆)
             if (highestQueueNumberToComplete > 0) {
               const statusRef = db.collection("system_status").doc("today");
               const statusDoc = await transaction.get(statusRef);
-              // 確保不會讓叫號機號碼倒退
-              if (!statusDoc.exists || (statusDoc.data().current_completed_number || 0) < highestQueueNumberToComplete) {
+              const currentCompleted = statusDoc.exists ? (statusDoc.data().current_completed_number || 0) : 0;
+              
+              if (highestQueueNumberToComplete > currentCompleted) {
                 transaction.update(statusRef, { current_completed_number: highestQueueNumberToComplete });
               }
             }
