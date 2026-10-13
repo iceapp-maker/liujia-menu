@@ -156,14 +156,16 @@
   </div>
 <!-- [Section 4: HTML 點餐區域與購物車入口] End -->
 
-  <!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
+ <!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
   <div id="orderDashboardSection" style="display: none; padding: 20px 16px; max-width: 600px; margin: 0 auto; text-align: center; animation: slideUp 0.3s ease;">
     <h2 style="color: var(--primary); margin-bottom: 15px;">✅ 訂單已成功送出</h2>
     
     <div style="background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 20px; border: 1px solid var(--border);">
       <p style="font-size: 15px; color: #555; margin-bottom: 5px;">您的訂單取號</p>
       <div style="font-size: 52px; font-weight: bold; color: var(--primary); margin: 0; line-height: 1;">#<span id="dashboardMyNum">--</span></div>
-      <p style="font-size: 14px; color: #888; margin-top: 10px;">目前櫃台處理至：<span id="dashboardCompletedNum" style="font-weight:bold; color:#333; font-size:16px;">#--</span></p>
+      
+      <!-- 💡 修改：將文案改為「最新取餐叫號」，避免客人誤會廚房進度 -->
+      <p style="font-size: 14px; color: #888; margin-top: 10px;">📢 最新取餐叫號：<span id="dashboardCompletedNum" style="font-weight:bold; color:var(--primary); font-size:18px;">#--</span></p>
     </div>
     
     <div style="background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); text-align: left; margin-bottom: 20px; border: 1px solid var(--border);">
@@ -179,7 +181,7 @@
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.13-DefaultTakeout
+    v2026.10.13-TextFix
   </div>
 <!-- [Section 5: HTML 智慧訂單狀態儀表板] End -->
 
