@@ -155,7 +155,7 @@
   </div>
 <!-- [Section 4: HTML 點餐區域與購物車入口] End -->
 
-<!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
+  <!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
   <div id="orderDashboardSection" style="display: none; padding: 20px 16px; max-width: 600px; margin: 0 auto; text-align: center; animation: slideUp 0.3s ease;">
     <h2 style="color: var(--primary); margin-bottom: 15px;">✅ 訂單已成功送出</h2>
     
@@ -178,7 +178,7 @@
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.13-FixTableRestore
+    v2026.10.13-FixSyntax
   </div>
 <!-- [Section 5: HTML 智慧訂單狀態儀表板] End -->
 
@@ -525,7 +525,6 @@
 <!-- [Section 9: JS 購物車與送單邏輯] End -->
 
 <!-- [Section 10: JS Firebase 監聽與還原] Start -->
-  <script>
     window.restoreActiveOrder = async function() {
       const savedDocId = safeGet("active_order_doc_id");
       if (!savedDocId || !window.firebaseDb) return;
