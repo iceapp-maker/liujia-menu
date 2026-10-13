@@ -156,7 +156,7 @@
   </div>
 <!-- [Section 4: HTML 點餐區域與購物車入口] End -->
 
-<!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
+  <!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
   <div id="orderDashboardSection" style="display: none; padding: 20px 16px; max-width: 600px; margin: 0 auto; text-align: center; animation: slideUp 0.3s ease;">
     <h2 style="color: var(--primary); margin-bottom: 15px;">✅ 訂單已成功送出</h2>
     
@@ -179,7 +179,7 @@
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.13-BlindURL
+    v2026.10.13-DefaultTakeout
   </div>
 <!-- [Section 5: HTML 智慧訂單狀態儀表板] End -->
 
@@ -244,7 +244,7 @@
   <script>
     let MENU_DATA = [];
     let isRiceAvailable = true; 
-    let currentDiningMode = "未知用餐方式";
+    let currentDiningMode = "外帶顧客"; // 預設值改為外帶
     let cart = [];
     let myCurrentOrderDocId = null;
     let myCurrentQueueNum = null;
@@ -253,39 +253,27 @@
     let modalSelectedSize = "小";
     let modalSelectedAddons = [];
     let modalQty = 1;
+    let globalTableStatus = {};
 
     function safeGet(key) { try { return localStorage.getItem(key) || ""; } catch(e) { return ""; } }
     function safeSet(key, val) { try { localStorage.setItem(key, val); } catch(e) {} }
 
-    // 💡 修改：強制依賴 URL 解析，如果沒有帶參數，給予警告
     function checkDiningSetup() {
       const params = new URLSearchParams(window.location.search);
       let table = params.get("table");
-      const type = params.get("type");
       
+      // 💡 邏輯修改：只要有 table 參數就是內用，否則一律視為外帶，不用跳警告了
       if (table) {
         const match = table.match(/^\d+/);
         if (match) return setDiningStatus(`內用 - ${match[0]} 桌`);
       }
-      
-      if (type === "takeout") {
-        return setDiningStatus("外帶顧客");
-      }
-      
-      // 找不到參數時的防呆處理
-      setDiningStatus("未綁定桌號");
-      alert("請掃描桌上的專屬 QR Code 進行點餐！");
+      setDiningStatus("外帶顧客");
     }
 
     function setDiningStatus(text) {
       currentDiningMode = text;
       document.getElementById("tableDisplayText").innerText = text;
       document.getElementById("drawerDiningDisplay").value = text;
-      
-      // 如果未綁定，鎖死結帳按鈕 (在下一段處理送單邏輯時會用到)
-      if (text === "未綁定桌號") {
-         document.getElementById("tableDisplayText").style.color = "red";
-      }
     }
 
     function initCustomerInfo() {
@@ -426,6 +414,7 @@
       if (open) {
         renderDrawerList();
         const isDineIn = currentDiningMode.includes("內用");
+        // 確保外帶時顯示姓名電話輸入框
         document.getElementById("nameFormGroup").style.display = isDineIn ? "none" : "block";
         document.getElementById("phoneFormGroup").style.display = isDineIn ? "none" : "block";
       }
@@ -455,11 +444,7 @@
     window.toggleInfoModal = (show) => document.getElementById("infoModal").style.display = show ? "flex" : "none";
 
     window.submitOrder = async function() {
-      // 💡 修改：加入未綁定桌號的防呆
-      if (currentDiningMode === "未綁定桌號") {
-         return alert("請掃描現場 QR Code 進行點餐，無法送出空桌號訂單！");
-      }
-
+      // 💡 已經移除未綁定桌號的防呆，因為現在預設是外帶
       const name = document.getElementById("custName").value.trim();
       const phone = document.getElementById("custPhone").value.trim();
       const isDineIn = currentDiningMode.includes("內用");
@@ -545,6 +530,7 @@
        document.getElementById("orderingSection").style.display = "block";
     };
 <!-- [Section 9: JS 購物車與送單邏輯] End -->
+  
 <!-- [Section 10: JS Firebase 監聽與還原] Start -->
     window.restoreActiveOrder = async function() {
       const savedDocId = safeGet("active_order_doc_id");
