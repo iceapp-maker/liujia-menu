@@ -155,7 +155,7 @@
   </div>
 <!-- [Section 4: HTML 點餐區域與購物車入口] End -->
 
-  <!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
+<!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
   <div id="orderDashboardSection" style="display: none; padding: 20px 16px; max-width: 600px; margin: 0 auto; text-align: center; animation: slideUp 0.3s ease;">
     <h2 style="color: var(--primary); margin-bottom: 15px;">✅ 訂單已成功送出</h2>
     
@@ -178,7 +178,7 @@
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.13-FixSyntax
+    v2026.10.13-TableLock
   </div>
 <!-- [Section 5: HTML 智慧訂單狀態儀表板] End -->
 
@@ -252,6 +252,7 @@
     let modalSelectedSize = "小";
     let modalSelectedAddons = [];
     let modalQty = 1;
+    let globalTableStatus = {}; // 新增：儲存全域桌位狀態
 
     function safeGet(key) { try { return localStorage.getItem(key) || ""; } catch(e) { return ""; } }
     function safeSet(key, val) { try { localStorage.setItem(key, val); } catch(e) {} }
@@ -279,11 +280,35 @@
       document.getElementById("custPhone").value = safeGet("order_cust_phone");
     }
 
-    window.openTableSelectModal = () => document.getElementById("tableSelectModal").style.display = "flex";
+    // 💡 修改：動態渲染選單並鎖定已佔用桌號
+    window.openTableSelectModal = () => {
+      if (myCurrentOrderDocId) {
+        alert("您目前已有進行中的訂單。如需換桌，請直接告知櫃台人員協助處理！");
+        return;
+      }
+      const selectEl = document.getElementById("modalTableNumber");
+      selectEl.innerHTML = "";
+      for (let i = 1; i <= 8; i++) {
+        const isOccupied = globalTableStatus[i] === "occupied";
+        const opt = document.createElement("option");
+        opt.value = i;
+        if (isOccupied) {
+          opt.text = `第 ${i} 桌 (用餐中)`;
+          opt.disabled = true; // 鎖定不可選
+        } else {
+          opt.text = `第 ${i} 桌`;
+        }
+        selectEl.appendChild(opt);
+      }
+      document.getElementById("tableSelectModal").style.display = "flex";
+    };
+    
     window.closeTableSelectModal = () => document.getElementById("tableSelectModal").style.display = "none";
+    
     window.toggleTableNumberDropdown = () => {
       document.getElementById("modalTableNumberGroup").style.display = document.getElementById("modalDiningType").value === "dine_in" ? "block" : "none";
     };
+    
     window.confirmTableSelection = () => {
       const type = document.getElementById("modalDiningType").value;
       if (type === "takeout") setDiningStatus("外帶顧客");
@@ -468,12 +493,24 @@
       try {
         if (window.firebaseDb) {
           const statusRef = window.firebaseDb.collection("system_status").doc("today");
+          const tablesRef = window.firebaseDb.collection("system_status").doc("tables"); // 新增
+          
           await window.firebaseDb.runTransaction(async (transaction) => {
             const statusDoc = await transaction.get(statusRef);
             if (!statusDoc.exists) { finalQueueNumber = 101; transaction.set(statusRef, { last_queue_number: 101, current_completed_number: 100 }); } 
             else { finalQueueNumber = (statusDoc.data().last_queue_number || 100) + 1; transaction.update(statusRef, { last_queue_number: finalQueueNumber }); }
+            
             const newOrderRef = window.firebaseDb.collection("orders").doc();
             newDocId = newOrderRef.id;
+
+            // 💡 鎖定桌位邏輯
+            if (isDineIn) {
+              const tableMatch = currentDiningMode.match(/內用\s*-\s*(\d+)\s*桌/);
+              if (tableMatch) {
+                transaction.set(tablesRef, { [tableMatch[1]]: "occupied" }, { merge: true });
+              }
+            }
+
             transaction.set(newOrderRef, { queue_number: finalQueueNumber, table_number: currentDiningMode, customer_name: (isDineIn && !name) ? "內用顧客" : name, customer_phone: (isDineIn && !phone) ? "無" : phone, note: document.getElementById("orderNote").value.trim(), items: cart, total_amount: cart.reduce((sum, i) => sum + i.subtotal, 0), status: "pending", created_at: firebase.firestore.FieldValue.serverTimestamp() });
           });
         }
@@ -510,7 +547,12 @@
     window.cancelAndEditOrder = async function() {
        if(!confirm("確定要取消並退回購物車修改嗎？\n(原本的排隊號碼將會作廢)")) return;
        try {
-          if (window.firebaseDb && myCurrentOrderDocId) await window.firebaseDb.collection("orders").doc(myCurrentOrderDocId).update({ status: "cancelled" });
+          if (window.firebaseDb && myCurrentOrderDocId) {
+             // 💡 釋放桌位邏輯：客人作廢訂單，桌子還給系統
+             await window.firebaseDb.collection("orders").doc(myCurrentOrderDocId).update({ status: "cancelled" });
+             const tableMatch = currentDiningMode.match(/內用\s*-\s*(\d+)\s*桌/);
+             if (tableMatch) await window.firebaseDb.collection("system_status").doc("tables").set({ [tableMatch[1]]: "idle" }, { merge: true });
+          }
           const backup = safeGet("last_cart_backup");
           if (backup) cart = JSON.parse(backup);
           resetToMenu(); updateCartDisplay(); toggleCartDrawer(true); 
@@ -534,10 +576,7 @@
           const data = docSnap.data();
           if (data.status === "pending") {
             myCurrentOrderDocId = savedDocId; myCurrentQueueNum = data.queue_number; cart = data.items || [];
-            
-            // 💡 修復點：將雲端訂單裡的桌號抓出來，覆蓋掉預設的「內用 - 1 桌」
             if (data.table_number) setDiningStatus(data.table_number);
-
             document.getElementById("orderingSection").style.display = "none"; document.getElementById("orderDashboardSection").style.display = "block";
             document.getElementById("dashboardMyNum").innerText = data.queue_number;
             document.getElementById("dashboardOrderItems").innerHTML = cart.map(item => `<div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px dashed #eee; padding-bottom:8px;"><div><strong>${item.name}</strong> ${item.size ? `(${item.size})` : ''} <span style="color:var(--primary); font-weight:bold;">x${item.qty}</span><div style="font-size:12px; color:#888; margin-top:2px;">${(item.addons||[]).map(a=>a.name).join(', ')}</div></div><div style="font-weight:bold;">$${item.subtotal}</div></div>`).join('');
@@ -579,6 +618,14 @@
               updateDashboardStatus();
             }
           });
+
+          // 💡 新增：監聽 system_status/tables (隨時知道哪桌被佔用)
+          window.firebaseDb.collection("system_status").doc("tables").onSnapshot((doc) => {
+            if (doc.exists) {
+              globalTableStatus = doc.data();
+            }
+          });
+
         }
       } catch (e) { console.error("Firebase Error:", e); }
     });
