@@ -52,7 +52,7 @@
       background: var(--card); padding: 16px 24px; display: flex; justify-content: space-between;
       align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 50;
     }
-    .navbar h1 { font-size: 20px; color: var(--primary); }
+    .navbar h1 { font-size: 20px; color: var(--primary); font-weight: 800; }
     .btn-reset {
       background: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 8px 16px;
       border-radius: 20px; font-size: 14px; font-weight: bold; cursor: pointer;
@@ -70,25 +70,25 @@
       background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 16px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid var(--warning);
     }
-    .order-card.completed { border-left-color: var(--success); opacity: 0.8; }
+    .order-card.completed { border-left-color: var(--success); opacity: 0.8; background: #fdfdfd; }
     .order-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 12px; }
     
-    /* 號碼與桌號樣式 */
-    .queue-num { font-size: 24px; font-weight: bold; color: var(--primary); margin-right: 8px; }
+    .queue-num { font-size: 24px; font-weight: bold; color: var(--primary); margin-right: 12px; }
+    /* 高對比桌號標籤 */
     .table-badge {
-      display: inline-block; background: #e3f2fd; color: #1565c0; padding: 4px 10px;
-      border-radius: 6px; font-size: 16px; font-weight: bold; border: 1px solid #bbdefb;
+      display: inline-block; background: #e3f2fd; color: #0d47a1; padding: 6px 12px;
+      border-radius: 8px; font-size: 16px; font-weight: 900; border: 1px solid #bbdefb;
     }
-    .takeout-badge { background: #f3e5f5; color: #7b1fa2; border-color: #e1bee7; }
+    .takeout-badge { background: #f3e5f5; color: #4a148c; border-color: #e1bee7; }
     
     .order-info { font-size: 14px; color: var(--gray); line-height: 1.5; margin-top: 4px;}
     
-    .item-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 15px; font-weight: 500;}
-    .item-addons { font-size: 12px; color: var(--gray); margin-left: 10px; }
+    .item-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 15px; font-weight: bold; color: #444;}
+    .item-addons { font-size: 13px; color: var(--gray); margin-left: 10px; font-weight: normal; }
     .order-note { background: #fff3cd; padding: 8px; border-radius: 6px; font-size: 13px; color: #856404; margin: 10px 0; font-weight: bold;}
     
     .btn-complete {
-      background: var(--primary); color: white; border: none; padding: 10px 20px;
+      background: var(--primary); color: white; border: none; padding: 12px 20px;
       border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 16px;
     }
 
@@ -109,11 +109,10 @@
     input:checked + .slider { background-color: var(--success); }
     input:checked + .slider:before { transform: translateX(24px); }
 
-    /* 自訂提示框 (取代 alert/confirm) */
     .toast {
       visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center;
       border-radius: 30px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px;
-      transform: translateX(-50%); font-size: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transform: translateX(-50%); font-size: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-weight: bold;
     }
     .toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
     @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
@@ -124,7 +123,7 @@
       justify-content: center; align-items: center; padding: 20px;
     }
     .modal-box { background: #fff; border-radius: 16px; padding: 24px; width: 100%; max-width: 320px; text-align: center; }
-    .modal-box p { font-size: 16px; margin-bottom: 24px; line-height: 1.5; color: #333; }
+    .modal-box p { font-size: 16px; margin-bottom: 24px; line-height: 1.5; color: #333; font-weight: bold; }
     .modal-btns { display: flex; gap: 12px; }
     .btn-cancel { flex: 1; padding: 12px; background: #eee; border: none; border-radius: 8px; font-weight: bold; color: #555; cursor: pointer;}
     .btn-confirm { flex: 1; padding: 12px; background: var(--primary); border: none; border-radius: 8px; font-weight: bold; color: #fff; cursor: pointer;}
@@ -134,13 +133,11 @@
 <!-- [Section 2: CSS 樣式設定] End -->
 
 <!-- [Section 3: HTML 共用元件與彈窗] Start -->
-  <!-- 自訂 Toast 提示 -->
   <div id="toast" class="toast">訊息內容</div>
-
-  <!-- 自訂 Confirm 視窗 -->
+  
   <div class="modal-overlay" id="confirmModal">
     <div class="modal-box">
-      <p id="confirmMessage">確定要執行此操作嗎？</p>
+      <p id="confirmMessage" style="white-space: pre-line;">確定要執行此操作嗎？</p>
       <div class="modal-btns">
         <button class="btn-cancel" onclick="closeConfirm(false)">取消</button>
         <button class="btn-confirm" onclick="closeConfirm(true)">確定</button>
@@ -148,12 +145,11 @@
     </div>
   </div>
 
-  <!-- 換桌專用彈窗 -->
   <div class="modal-overlay" id="changeTableModal">
     <div class="modal-box">
       <h3 style="margin-bottom: 15px; color: var(--primary);">為客人更改桌號</h3>
       <p id="currentTableDisplay" style="font-size: 14px; color: #555; margin-bottom: 10px; font-weight: bold;">目前：</p>
-      <select id="newTableSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; margin-bottom: 20px;">
+      <select id="newTableSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; margin-bottom: 20px; font-weight: bold;">
         <option value="1">第 1 桌</option><option value="2">第 2 桌</option><option value="3">第 3 桌</option>
         <option value="4">第 4 桌</option><option value="5">第 5 桌</option><option value="6">第 6 桌</option>
         <option value="7">第 7 桌</option><option value="8">第 8 桌</option>
@@ -186,19 +182,23 @@
 
     <div class="tabs">
       <div class="tab active" onclick="switchTab('ordersTab', this)">即時接單</div>
-      <div class="tab" onclick="switchTab('menuTab', this)">菜單售完設定</div>
+      <div class="tab" onclick="switchTab('historyTab', this)">歷史紀錄</div>
+      <div class="tab" onclick="switchTab('menuTab', this)">菜單設定</div>
     </div>
 
     <!-- 訂單區塊 -->
     <div id="ordersTab" class="content-section active">
-      <!-- 修正區塊標題 -->
       <h3 style="margin-bottom: 12px; color: var(--gray);">廚房製作區 (待出餐)</h3>
-      <div id="pendingOrdersList">
-        <p style="text-align: center; color: #aaa; padding: 20px;">載入中或尚無訂單...</p>
-      </div>
+      <div id="pendingOrdersList"></div>
 
       <h3 style="margin: 24px 0 12px; color: var(--gray);">待取餐 / 待結帳</h3>
       <div id="completedOrdersList"></div>
+    </div>
+
+    <!-- 歷史紀錄區塊 -->
+    <div id="historyTab" class="content-section">
+      <p style="font-size: 13px; color: var(--gray); margin-bottom: 16px; text-align: center;">已出餐且完成付款的訂單將自動歸檔於此區。</p>
+      <div id="historyOrdersList"></div>
     </div>
 
     <!-- 菜單管理區塊 -->
@@ -223,10 +223,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 儲存目前的所有未結訂單，方便全域計算合併結帳
-    let globalActiveOrders = [];
+    let globalActiveOrders = []; // 儲存今日所有的未結帳訂單，供併單使用
 
-    // 自訂 UI 提示元件
     function showToast(message) {
       const toast = document.getElementById("toast");
       toast.innerText = message;
@@ -250,21 +248,15 @@
     async function verifyPin() {
       const input = document.getElementById("pinInput").value;
       if (!input) return showToast("請輸入密碼！");
-
       const btn = document.querySelector(".btn-login");
       btn.innerText = "驗證中...";
       
       try {
         const docRef = db.collection("system_settings").doc("admin");
         const docSnap = await docRef.get();
-        let actualPin = "1111"; // 預設密碼
-        
-        // 若雲端尚未建立密碼，自動初始化
-        if (!docSnap.exists) {
-          await docRef.set({ pin: "1111" });
-        } else {
-          actualPin = docSnap.data().pin;
-        }
+        let actualPin = "1111"; 
+        if (!docSnap.exists) await docRef.set({ pin: "1111" });
+        else actualPin = docSnap.data().pin;
 
         if (input === actualPin) {
           document.getElementById("loginScreen").style.display = "none";
@@ -275,15 +267,9 @@
         } else {
           showToast("密碼錯誤，請重新輸入！");
         }
-      } catch (err) {
-        console.error(err);
-        showToast("連線失敗，請檢查網路！");
-      } finally {
-        btn.innerText = "登入系統";
-      }
+      } catch (err) { showToast("連線失敗，請檢查網路！"); } finally { btn.innerText = "登入系統"; }
     }
 
-    // 支援 Enter 鍵登入
     document.getElementById("pinInput").addEventListener("keypress", function(event) {
       if (event.key === "Enter") { event.preventDefault(); verifyPin(); }
     });
@@ -296,56 +282,113 @@
     }
 
     function triggerReset() {
-      showConfirm("確定要開始新的一天營業嗎？\n這將會把取號機歸零重置為 #100 號。", async (yes) => {
+      showConfirm("確定要開始新的一天營業嗎？\n這將會把取號機歸零重置為 #100 號，並清空所有桌位狀態。", async (yes) => {
         if (!yes) return;
         try {
-          await db.collection("system_status").doc("today").set({
-            last_queue_number: 100,
-            current_completed_number: 100
+          await db.runTransaction(async (transaction) => {
+            transaction.set(db.collection("system_status").doc("today"), {
+              last_queue_number: 100,
+              current_completed_number: 100
+            });
+            // 營業歸零順便清空所有桌位
+            let newTables = {};
+            for(let i=1; i<=8; i++) newTables[i] = "idle";
+            transaction.set(db.collection("system_status").doc("tables"), newTables);
           });
           showToast("✅ 已成功歸零！目前的取號將從 #101 開始。");
-        } catch (err) {
-          console.error(err);
-          showToast("歸零失敗！");
-        }
+        } catch (err) { showToast("歸零失敗！"); }
       });
     }
 <!-- [Section 7: JS 登入與狀態管理] End -->
 
 <!-- [Section 8: JS 訂單接單與叫號邏輯] Start -->
     function startListeningOrders() {
-      // 抓取今天的訂單
-      db.collection("orders").orderBy("created_at", "desc").limit(50).onSnapshot(snapshot => {
+      db.collection("orders").orderBy("created_at", "desc").limit(100).onSnapshot(snapshot => {
         let pendingOrders = [];
         let completedOrders = [];
-        globalActiveOrders = []; // 供智慧併單使用
+        let historyOrders = [];
+        globalActiveOrders = []; 
 
         snapshot.forEach(doc => {
           const data = doc.data();
           data.docId = doc.id;
           
-          if (data.status === "pending" || data.status === "completed") {
+          if (data.status === "cancelled") return;
+
+          if (data.status === "pending" || !data.is_paid) {
             globalActiveOrders.push(data);
           }
 
-          if (data.status === "pending") pendingOrders.push(data);
-          else if (data.status === "completed") completedOrders.push(data);
+          if (data.status === "pending") {
+            pendingOrders.push(data); 
+          } else if (data.status === "completed" && !data.is_paid) {
+            completedOrders.push(data); 
+          } else if (data.status === "completed" && data.is_paid) {
+            historyOrders.push(data); 
+          }
         });
 
-        // 待處理：先點的（號碼小）在最上面
         pendingOrders.sort((a, b) => a.queue_number - b.queue_number);
 
         document.getElementById("pendingOrdersList").innerHTML = pendingOrders.length === 0 ? 
           `<p style="text-align: center; color: #aaa; padding: 20px;">目前尚無待處理的訂單</p>` : 
-          pendingOrders.map(order => buildOrderCard(order, true)).join('');
+          pendingOrders.map(order => buildOrderCard(order, 'pending')).join('');
 
         document.getElementById("completedOrdersList").innerHTML = completedOrders.length === 0 ? 
-          `<p style="text-align: center; color: #aaa; padding: 10px;">尚未有待結帳的完成訂單</p>` : 
-          completedOrders.map(order => buildOrderCard(order, false)).join('');
+          `<p style="text-align: center; color: #aaa; padding: 10px;">目前無等待結帳或取餐的訂單</p>` : 
+          completedOrders.map(order => buildOrderCard(order, 'completed')).join('');
+
+        // 歷史區可收合介面 (Accordion)
+        let historyGroups = {};
+        historyOrders.forEach(order => {
+           let dStr = order.created_at ? new Date(order.created_at.toDate()).toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'}) : "未知日期";
+           if (!historyGroups[dStr]) historyGroups[dStr] = [];
+           historyGroups[dStr].push(order);
+        });
+
+        const todayStr = new Date().toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'});
+        
+        let historyHtml = "";
+        for (const [dateStr, orders] of Object.entries(historyGroups)) {
+          const isOpen = dateStr === todayStr;
+          const displayStyle = isOpen ? "block" : "none";
+          const icon = isOpen ? "📂" : "📁";
+
+          historyHtml += `
+            <div style="background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 12px; overflow: hidden;">
+              <div onclick="toggleHistoryGroup(this)" style="padding: 12px 16px; background: #f8f9fa; cursor: pointer; font-weight: bold; color: #555; display: flex; justify-content: space-between; align-items: center;">
+                <span><span class="group-icon">${icon}</span> 📅 ${dateStr} <span style="font-size:12px; color:#888; font-weight:normal; margin-left:8px;">(共 ${orders.length} 筆)</span></span>
+                <span class="toggle-arrow" style="color: #999;">${isOpen ? '▼' : '▶'}</span>
+              </div>
+              <div class="group-content" style="display: ${displayStyle}; padding: 16px; background: #fcfcfc;">
+                ${orders.map(order => buildOrderCard(order, 'history')).join('')}
+              </div>
+            </div>
+          `;
+        }
+        
+        document.getElementById("historyOrdersList").innerHTML = historyHtml === "" ? 
+          `<p style="text-align: center; color: #aaa; padding: 20px;">尚無歷史紀錄</p>` : historyHtml;
       });
     }
 
-    function buildOrderCard(order, isPending) {
+    window.toggleHistoryGroup = function(headerElement) {
+      const content = headerElement.nextElementSibling;
+      const icon = headerElement.querySelector('.group-icon');
+      const arrow = headerElement.querySelector('.toggle-arrow');
+      
+      if (content.style.display === "none") {
+        content.style.display = "block";
+        icon.innerText = "📂";
+        arrow.innerText = "▼";
+      } else {
+        content.style.display = "none";
+        icon.innerText = "📁";
+        arrow.innerText = "▶";
+      }
+    };
+
+    function buildOrderCard(order, viewType) {
       let timeStr = "";
       if (order.created_at) {
         const orderDate = new Date(order.created_at.toDate());
@@ -365,7 +408,7 @@
       if (isDineIn) {
         const match = order.table_number.match(/內用\s*-\s*(\d+)\s*桌/);
         const tableNum = match ? match[1] : "?";
-        const isAddon = order.table_number.includes("加單") ? "<span style='font-size:12px; margin-left:4px;'>加單</span>" : "";
+        const isAddon = order.table_number.includes("加單") ? "<span style='font-size:12px; margin-left:4px; font-weight:normal; color:#d32f2f;'>加單</span>" : "";
         tableBadgeHtml = `<span class="table-badge">${tableNum} 桌 ${isAddon}</span>`;
       } else {
         tableBadgeHtml = `<span class="table-badge takeout-badge">外帶</span>`;
@@ -381,22 +424,31 @@
         </div>
       `).join('');
 
-      let primaryBtn = isPending ? `<button class="btn-complete" onclick="completeOrder('${order.docId}', ${order.queue_number})">🔔 出餐完成 (通知顧客)</button>` : '';
-      
+      let primaryBtn = '';
       let secondaryBtns = '';
-      if (isDineIn && !order.is_paid) {
-        secondaryBtns += `<button style="flex: 1; padding: 10px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="openChangeTableModal('${order.docId}', '${order.table_number}')">🔄 換桌</button>`;
-      }
 
-      if (order.is_paid) {
-        secondaryBtns += `<div style="flex: 1; padding: 10px; text-align: center; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold;">✅ 已結帳</div>`;
-      } else {
+      if (viewType === 'pending') {
+        primaryBtn = `<button class="btn-complete" onclick="completeOrder('${order.docId}', ${order.queue_number})">🔔 出餐完成 (通知顧客)</button>`;
+        if (isDineIn && !order.is_paid) {
+          secondaryBtns += `<button style="flex: 1; padding: 10px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="openChangeTableModal('${order.docId}', '${order.table_number}')">🔄 換桌</button>`;
+        }
+        if (order.is_paid) {
+          secondaryBtns += `<div style="flex: 1; padding: 10px; text-align: center; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold;">✅ 已付款 (待出餐)</div>`;
+        } else {
+          let btnText = isDineIn ? "💰 內用結帳 (清桌)" : "💰 外帶結帳 (取餐)";
+          secondaryBtns += `<button style="flex: 1; padding: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="checkoutOrder('${order.docId}', '${order.table_number}', ${isDineIn})">${btnText}</button>`;
+        }
+      } else if (viewType === 'completed') {
         let btnText = isDineIn ? "💰 內用結帳 (清桌)" : "💰 外帶結帳 (取餐)";
         secondaryBtns += `<button style="flex: 1; padding: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="checkoutOrder('${order.docId}', '${order.table_number}', ${isDineIn})">${btnText}</button>`;
+      } else if (viewType === 'history') {
+        secondaryBtns += `<div style="flex: 1; padding: 10px; text-align: center; background: #f5f5f5; color: #888; border: 1px solid #eee; border-radius: 8px; font-weight: bold;">☑️ 訂單已結清歸檔</div>`;
       }
 
+      let cardClass = viewType === 'history' ? 'order-card completed' : (viewType === 'completed' ? 'order-card completed' : 'order-card');
+
       return `
-        <div class="order-card ${isPending ? '' : 'completed'}">
+        <div class="${cardClass}">
           <div class="order-header">
             <div style="display:flex; align-items:center;">
               <span class="queue-num">#${order.queue_number}</span>
@@ -408,7 +460,7 @@
           ${order.note ? `<div class="order-note">📝 備註：${order.note}</div>` : ''}
           <div style="text-align: right; font-weight: bold; margin-top: 10px; font-size: 18px; color: var(--primary);">總計：$${order.total_amount}</div>
           ${primaryBtn}
-          <div style="display: flex; gap: 10px; margin-top: 10px;">${secondaryBtns}</div>
+          ${secondaryBtns ? `<div style="display: flex; gap: 10px; margin-top: 10px;">${secondaryBtns}</div>` : ''}
         </div>
       `;
     }
@@ -421,10 +473,9 @@
             const statusRef = db.collection("system_status").doc("today");
             const statusDoc = await transaction.get(statusRef);
             
-            // 標記訂單為已完成
             transaction.update(db.collection("orders").doc(docId), { status: "completed" });
             
-            // 💡 防呆：確保跳號機數字只升不降
+            // 防呆機制：確保跳號機數字只往上不倒退
             const currentCompleted = statusDoc.exists ? (statusDoc.data().current_completed_number || 0) : 0;
             if (queueNumber > currentCompleted) {
               transaction.update(statusRef, { current_completed_number: queueNumber });
@@ -435,7 +486,6 @@
       });
     }
 
-    // 💡 結帳自動連動出餐邏輯
     function checkoutOrder(docId, tableStr, isDineIn) {
       let ordersToCheckout = [];
       let totalAmountToCollect = 0;
@@ -471,12 +521,9 @@
 
           await db.runTransaction(async (transaction) => {
             for (const order of ordersToCheckout) {
-              let updateData = { 
-                is_paid: true, 
-                paid_at: firebase.firestore.FieldValue.serverTimestamp() 
-              };
+              let updateData = { is_paid: true, paid_at: firebase.firestore.FieldValue.serverTimestamp() };
 
-              // 如果結帳時這張單還在 pending，強制完單並記錄最高號碼
+              // 如果結帳時單子還沒出餐，強制完單並記錄最高號碼
               if (order.status === "pending") {
                 updateData.status = "completed";
                 if (order.queue_number > highestQueueNumberToComplete) {
@@ -487,7 +534,7 @@
               transaction.update(db.collection("orders").doc(order.docId), updateData);
             }
             
-            // 內用清桌釋放
+            // 內用釋放桌位
             if (isDineIn) {
               const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
               if (match) {
@@ -496,7 +543,7 @@
               }
             }
 
-            // 💡 若有連動出餐，同步推進前台叫號機 (並加入不倒退防呆)
+            // 推進叫號機 (加入防倒退機制)
             if (highestQueueNumberToComplete > 0) {
               const statusRef = db.collection("system_status").doc("today");
               const statusDoc = await transaction.get(statusRef);
@@ -579,7 +626,7 @@
         showToast(isAvail ? "✅ 已上架" : "🚫 已設為售完");
       } catch (err) { showToast("更新失敗，請檢查網路。"); }
     }
-<!-- [Section 9: JS 菜單開關邏輯] End -->
   </script>
+<!-- [Section 9: JS 菜單開關邏輯] End -->
 </body>
 </html>
