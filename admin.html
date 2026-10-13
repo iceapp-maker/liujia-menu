@@ -314,17 +314,18 @@
 
 <!-- [Section 8: JS 訂單接單與叫號邏輯] Start -->
     function startListeningOrders() {
+      // 抓取今天的訂單
       db.collection("orders").orderBy("created_at", "desc").limit(50).onSnapshot(snapshot => {
         let pendingOrders = [];
         let completedOrders = [];
-        globalActiveOrders = []; // 更新全域列表
+        globalActiveOrders = []; // 供智慧併單使用
 
         snapshot.forEach(doc => {
           const data = doc.data();
           data.docId = doc.id;
           
           if (data.status === "pending" || data.status === "completed") {
-            globalActiveOrders.push(data); // 只要還沒被歸檔(closed/cancelled)，都算 active
+            globalActiveOrders.push(data);
           }
 
           if (data.status === "pending") pendingOrders.push(data);
@@ -335,24 +336,22 @@
         pendingOrders.sort((a, b) => a.queue_number - b.queue_number);
 
         document.getElementById("pendingOrdersList").innerHTML = pendingOrders.length === 0 ? 
-          `<p style="text-align: center; color: #aaa; padding: 20px;">廚房目前沒有需要製作的訂單</p>` : 
+          `<p style="text-align: center; color: #aaa; padding: 20px;">目前尚無待處理的訂單</p>` : 
           pendingOrders.map(order => buildOrderCard(order, true)).join('');
 
         document.getElementById("completedOrdersList").innerHTML = completedOrders.length === 0 ? 
-          `<p style="text-align: center; color: #aaa; padding: 10px;">尚未有等待結帳與取餐的訂單</p>` : 
+          `<p style="text-align: center; color: #aaa; padding: 10px;">尚未有待結帳的完成訂單</p>` : 
           completedOrders.map(order => buildOrderCard(order, false)).join('');
       });
     }
 
     function buildOrderCard(order, isPending) {
-      // 處理日期與時間
       let timeStr = "";
       if (order.created_at) {
         const orderDate = new Date(order.created_at.toDate());
         const today = new Date();
         const isToday = orderDate.getDate() === today.getDate() && orderDate.getMonth() === today.getMonth() && orderDate.getFullYear() === today.getFullYear();
         const baseTime = orderDate.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'});
-        
         if (isToday) {
           timeStr = baseTime;
         } else {
@@ -361,13 +360,11 @@
         }
       }
 
-      // 處理桌號與樣式 (放大徽章)
       const isDineIn = order.table_number.includes("內用");
       let tableBadgeHtml = "";
       if (isDineIn) {
-        const match = order.table_number.match(/(\d+)\s*桌/);
+        const match = order.table_number.match(/內用\s*-\s*(\d+)\s*桌/);
         const tableNum = match ? match[1] : "?";
-        // 若名稱有加單字樣，一併顯示
         const isAddon = order.table_number.includes("加單") ? "<span style='font-size:12px; margin-left:4px;'>加單</span>" : "";
         tableBadgeHtml = `<span class="table-badge">${tableNum} 桌 ${isAddon}</span>`;
       } else {
@@ -384,7 +381,6 @@
         </div>
       `).join('');
 
-      // 按鈕文字更新：更明確的指示
       let primaryBtn = isPending ? `<button class="btn-complete" onclick="completeOrder('${order.docId}', ${order.queue_number})">🔔 出餐完成 (通知顧客)</button>` : '';
       
       let secondaryBtns = '';
@@ -406,7 +402,7 @@
               <span class="queue-num">#${order.queue_number}</span>
               ${tableBadgeHtml}
             </div>
-            <div style="text-align: right;"><div style="font-size: 13px; color: var(--gray);">${timeStr}</div><div class="order-info">${order.customer_name}</div></div>
+            <div style="text-align: right;"><div style="font-size: 13px; color: var(--gray);">${timeStr}</div><div style="font-size: 13px; margin-top: 4px;">${order.customer_name}</div></div>
           </div>
           <div>${itemsHtml}</div>
           ${order.note ? `<div class="order-note">📝 備註：${order.note}</div>` : ''}
@@ -430,16 +426,18 @@
       });
     }
 
-    // 💡 智慧併單結帳邏輯
+    // 💡 修改：結帳時自動連動出餐邏輯
     function checkoutOrder(docId, tableStr, isDineIn) {
       let ordersToCheckout = [];
       let totalAmountToCollect = 0;
       let displayMessage = "";
+      
+      const targetOrder = globalActiveOrders.find(o => o.docId === docId);
+      if(!targetOrder) return;
 
       if (isDineIn) {
-        // 內用：找出所有同桌號且尚未付款的 active 訂單 (包含本單與加單)
-        const match = tableStr.match(/(\d+)\s*桌/);
-        if (!match) return; // 防錯
+        const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
+        if (!match) return;
         const targetTableNum = match[1];
 
         ordersToCheckout = globalActiveOrders.filter(o => 
@@ -452,9 +450,6 @@
         displayMessage = `【第 ${targetTableNum} 桌 結帳確認】\n包含單號：${orderNums}\n總應收金額：$${totalAmountToCollect}\n\n確認顧客已付款並要清空此桌位嗎？`;
         
       } else {
-        // 外帶：單筆結帳
-        const targetOrder = globalActiveOrders.find(o => o.docId === docId);
-        if(!targetOrder) return;
         ordersToCheckout = [targetOrder];
         totalAmountToCollect = targetOrder.total_amount;
         displayMessage = `【外帶結帳確認】\n單號：#${targetOrder.queue_number}\n應收金額：$${totalAmountToCollect}\n\n確認顧客已付款取餐嗎？`;
@@ -463,24 +458,46 @@
       showConfirm(displayMessage, async (yes) => {
         if (!yes) return;
         try {
+          let highestQueueNumberToComplete = 0; // 記錄需要推進的最大叫號機號碼
+
           await db.runTransaction(async (transaction) => {
-            // 1. 將所有相關訂單標記為已付款
             for (const order of ordersToCheckout) {
-              transaction.update(db.collection("orders").doc(order.docId), { 
+              let updateData = { 
                 is_paid: true, 
                 paid_at: firebase.firestore.FieldValue.serverTimestamp() 
-              });
+              };
+
+              // 💡 核心連動：如果結帳時這張單還在 pending，就強制把它變成 completed，並記錄號碼準備推動叫號機
+              if (order.status === "pending") {
+                updateData.status = "completed";
+                if (order.queue_number > highestQueueNumberToComplete) {
+                  highestQueueNumberToComplete = order.queue_number;
+                }
+              }
+
+              transaction.update(db.collection("orders").doc(order.docId), updateData);
             }
             
-            // 2. 如果是內用，釋放桌位
+            // 釋放桌位
             if (isDineIn) {
-              const match = tableStr.match(/(\d+)\s*桌/);
+              const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
               if (match) {
                 const tablesRef = db.collection("system_status").doc("tables");
                 transaction.set(tablesRef, { [match[1]]: "idle" }, { merge: true });
               }
             }
+
+            // 💡 如果有包含未出餐的訂單，一併更新前台叫號機
+            if (highestQueueNumberToComplete > 0) {
+              const statusRef = db.collection("system_status").doc("today");
+              const statusDoc = await transaction.get(statusRef);
+              // 確保不會讓叫號機號碼倒退
+              if (!statusDoc.exists || (statusDoc.data().current_completed_number || 0) < highestQueueNumberToComplete) {
+                transaction.update(statusRef, { current_completed_number: highestQueueNumberToComplete });
+              }
+            }
           });
+          
           showToast(`✅ 已成功結帳！共收 $${totalAmountToCollect}`);
         } catch (err) { console.error(err); showToast("結帳失敗。"); }
       });
@@ -488,7 +505,7 @@
 
     let activeChangeTableDocId = null, activeChangeTableOldNum = null;
     function openChangeTableModal(docId, tableStr) {
-      const match = tableStr.match(/(\d+)\s*桌/);
+      const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
       if (!match) return; 
       activeChangeTableOldNum = match[1];
       activeChangeTableDocId = docId;
@@ -501,7 +518,6 @@
       const newNum = document.getElementById("newTableSelect").value;
       if (newNum === activeChangeTableOldNum) return showToast("相同桌號！");
       
-      // 尋找此訂單的原始名稱(可能包含加單字樣)
       const targetOrder = globalActiveOrders.find(o => o.docId === activeChangeTableDocId);
       if(!targetOrder) return;
       const isAddon = targetOrder.table_number.includes("加單") ? " (加單)" : "";
