@@ -236,6 +236,7 @@
       <div class="tab" onclick="switchTab('posTab', this)">➕ 代客點餐</div>
       <div class="tab" onclick="switchTab('historyTab', this)">歷史紀錄</div>
       <div class="tab" onclick="switchTab('menuTab', this)">餐點管理</div>
+      <div class="tab" onclick="switchTab('settingsTab', this)">⚙️ 店務設定</div>
     </div>
 
     <div id="ordersTab" class="content-section active">
@@ -249,11 +250,9 @@
       <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
         <label style="font-weight:bold; display:block; margin-bottom:8px;">選擇桌號 / 外帶</label>
         <div style="display:flex; gap:10px;">
-          <!-- 💡 桌號選單將由 JS 動態生成，以呈現被佔用的狀態 -->
           <select id="posTableSelect" class="form-input" style="flex:1;" onchange="togglePosFields()"></select>
           <input type="text" id="posCustNote" class="form-input" placeholder="稱呼(選填)" style="flex:1;">
         </div>
-        <!-- 💡 專屬外帶聯絡電話欄位 -->
         <div style="display:flex; gap:10px; margin-top:10px;" id="posTakeoutFields">
           <input type="tel" id="posCustPhone" class="form-input" placeholder="聯絡電話(外帶必填)" style="flex:1; border-color:var(--warning);">
         </div>
@@ -292,6 +291,49 @@
           <button onclick="openCategoryModal()" style="flex: 1; background: #fff; color: #333; border: 2px dashed #ccc; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer;">📂 新增分類</button>
         </div>
         <div id="menuEditList"></div>
+      </div>
+    </div>
+
+    <!-- 💡 新增：店務設定 Tab -->
+    <div id="settingsTab" class="content-section">
+      <div style="background:#fff; padding:20px; border-radius:12px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); border-left: 5px solid var(--primary);">
+        <h3 style="color:var(--primary); margin-bottom:15px;">🚨 臨時店休開關</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong style="font-size:16px;">暫停接單 (強制覆蓋)</strong>
+            <p style="font-size:13px; color:#888; margin-top:4px;">開啟後，無論是否在營業時間，前台皆無法點餐。</p>
+          </div>
+          <label class="switch"><input type="checkbox" id="manualCloseToggle" onchange="toggleManualClose(this.checked)"><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <div style="background:#fff; padding:20px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+        <h3 style="margin-bottom:15px;">⏰ 常規營業時間設定</h3>
+        <div class="form-group">
+          <label>固定公休日</label>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;" id="closedDaysWrapper">
+            <label><input type="checkbox" value="1"> 一</label>
+            <label><input type="checkbox" value="2"> 二</label>
+            <label><input type="checkbox" value="3"> 三</label>
+            <label><input type="checkbox" value="4"> 四</label>
+            <label><input type="checkbox" value="5"> 五</label>
+            <label><input type="checkbox" value="6"> 六</label>
+            <label><input type="checkbox" value="0"> 日</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>營業時段 1</label>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input type="time" id="time1Start" class="form-input"> <span>至</span> <input type="time" id="time1End" class="form-input">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>營業時段 2 (若無請留白)</label>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input type="time" id="time2Start" class="form-input"> <span>至</span> <input type="time" id="time2End" class="form-input">
+          </div>
+        </div>
+        <button class="btn-complete" style="margin-top:10px;" onclick="saveStoreSettings()">儲存營業時間</button>
       </div>
     </div>
   </div>
@@ -355,7 +397,8 @@
           showToast("登入成功！");
           startListeningOrders();
           startListeningMenu(); 
-          startListeningTables(); // 啟動桌位狀態監聽
+          startListeningTables();
+          startListeningSettings(); // 💡 啟動店務設定監聽
         } else { showToast("密碼錯誤，請重新輸入！"); }
       } catch (err) { showToast("連線失敗，請檢查網路！"); } finally { btn.innerText = "登入系統"; }
     }
@@ -384,6 +427,50 @@
           showToast("✅ 已成功歸零！目前的取號將從 #101 開始。");
         } catch (err) { showToast("歸零失敗！"); }
       });
+    }
+
+    // 💡 店務設定相關邏輯
+    let globalStoreSettings = {};
+    function startListeningSettings() {
+      db.collection("system_settings").doc("store_info").onSnapshot(doc => {
+        if (doc.exists) {
+          globalStoreSettings = doc.data();
+          document.getElementById("manualCloseToggle").checked = globalStoreSettings.manual_close || false;
+          
+          const days = globalStoreSettings.closed_days || [];
+          document.querySelectorAll("#closedDaysWrapper input").forEach(cb => { cb.checked = days.includes(parseInt(cb.value)); });
+          
+          const hours = globalStoreSettings.hours || ["11:00-14:00", "17:00-20:30"];
+          if(hours[0]) { const [s, e] = hours[0].split('-'); document.getElementById("time1Start").value = s; document.getElementById("time1End").value = e; }
+          if(hours[1]) { const [s, e] = hours[1].split('-'); document.getElementById("time2Start").value = s; document.getElementById("time2End").value = e; }
+        } else {
+          db.collection("system_settings").doc("store_info").set({ manual_close: false, closed_days: [], hours: ["11:00-14:00", "17:00-20:30"] });
+        }
+      });
+    }
+
+    async function toggleManualClose(isClosed) {
+      try {
+        await db.collection("system_settings").doc("store_info").update({ manual_close: isClosed });
+        showToast(isClosed ? "🚫 已開啟臨時店休！" : "✅ 已恢復正常接單！");
+      } catch (e) { showToast("更新失敗"); }
+    }
+
+    async function saveStoreSettings() {
+      let closed_days = [];
+      document.querySelectorAll("#closedDaysWrapper input:checked").forEach(cb => closed_days.push(parseInt(cb.value)));
+      
+      let hours = [];
+      const t1s = document.getElementById("time1Start").value, t1e = document.getElementById("time1End").value;
+      if(t1s && t1e) hours.push(`${t1s}-${t1e}`);
+      
+      const t2s = document.getElementById("time2Start").value, t2e = document.getElementById("time2End").value;
+      if(t2s && t2e) hours.push(`${t2s}-${t2e}`);
+
+      try {
+        await db.collection("system_settings").doc("store_info").update({ closed_days, hours });
+        showToast("✅ 營業時間設定已儲存");
+      } catch (e) { showToast("儲存失敗"); }
     }
 <!-- [Section 7: JS 登入與狀態管理] End -->
 
