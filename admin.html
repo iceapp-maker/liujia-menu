@@ -631,6 +631,11 @@
         let remainingOrdersForTable = currentCheckoutOrders.length - ordersToCheckout.length;
 
         await db.runTransaction(async (transaction) => {
+          // 💡 修正：將讀取動作 (get) 移到最前方
+          const statusRef = db.collection("system_status").doc("today");
+          const statusDoc = await transaction.get(statusRef);
+
+          // 開始進行所有的寫入動作 (update / set)
           for (const order of ordersToCheckout) {
             let updateData = { is_paid: true, paid_at: firebase.firestore.FieldValue.serverTimestamp() };
             if (order.status === "pending") {
@@ -646,7 +651,7 @@
             const match = currentCheckoutTable.match(/內用\s*-\s*(\d+)\s*桌/);
             if (match) {
               const tablesRef = db.collection("system_status").doc("tables");
-              // 💡 只有當這桌「所有的單」都結清了，才釋放桌位狀態
+              // 只有當這桌「所有的單」都結清了，才釋放桌位狀態
               if (remainingOrdersForTable === 0) {
                 transaction.set(tablesRef, { [match[1]]: "idle" }, { merge: true });
               }
@@ -654,8 +659,6 @@
           }
 
           if (highestQueueNumberToComplete > 0) {
-            const statusRef = db.collection("system_status").doc("today");
-            const statusDoc = await transaction.get(statusRef);
             const currentCompleted = statusDoc.exists ? (statusDoc.data().current_completed_number || 0) : 0;
             if (highestQueueNumberToComplete > currentCompleted) {
               transaction.update(statusRef, { current_completed_number: highestQueueNumberToComplete });
