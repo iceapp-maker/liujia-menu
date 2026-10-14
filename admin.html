@@ -388,16 +388,18 @@
       if (confirmCallback) confirmCallback(result);
     }
 
-    // 💡 全新核心：完美解析自訂桌名的函數 (過濾加單、併桌標籤)
+    // 💡 萬用桌名解析函數 (完美過濾加單、併桌標籤，支援任何自訂桌名)
     function parseTableName(str) {
       if (!str || !str.includes("內用")) return null;
       let name = str.replace("內用 - ", "").trim();
       name = name.replace(" (加單)", "").replace(" (併桌)", "").trim();
       return name;
     }
-    // [Section 6: JS 系統變數與共用函式] End
+  </script>
+  <!-- [Section 6: JS 系統變數與共用函式] End -->
 
-    // [Section 7: JS 登入與狀態管理] Start
+  <!-- [Section 7: JS 登入與狀態管理] Start -->
+  <script>
     async function verifyPin() {
       const input = document.getElementById("pinInput").value;
       if (!input) return showToast("請輸入密碼！");
@@ -536,16 +538,18 @@
     }
 
     function removeTableConfig(idx) {
-      showConfirm("確定要刪除此桌位設定嗎？\n(注意：若仍有客人坐在此桌，系統可能會有短暫顯示異常)", async (yes) => {
+      showConfirm("確定要刪除此桌位設定嗎？", async (yes) => {
         if(!yes) return;
         let newList = [...globalTableConfig];
         newList.splice(idx, 1);
         try { await db.collection("system_settings").doc("tables_config").update({ tables: newList }); showToast("🗑️ 桌位已刪除"); } catch(e) { showToast("刪除失敗"); }
       });
     }
-    // [Section 7: JS 登入與狀態管理] End
+  </script>
+  <!-- [Section 7: JS 登入與狀態管理] End -->
 
-    // [Section 8: JS 訂單接單與叫號邏輯] Start
+  <!-- [Section 8: JS 訂單接單與叫號邏輯] Start -->
+  <script>
     function startListeningTables() {
       db.collection("system_status").doc("tables").onSnapshot(doc => {
         if (doc.exists) {
@@ -713,15 +717,15 @@
 
       let primaryBtn = ''; let secondaryBtns = '';
       if (viewType === 'pending') {
-        primaryBtn = `<button class="btn-complete" onclick="completeOrder('${order.docId}', ${order.queue_number})">🔔 出餐完成 (通知顧客)</button>`;
+        primaryBtn = `<button class="btn-complete" onclick="completeOrder('${order.docId}', ${order.queue_number}, ${order.is_paid})">🔔 出餐完成 (通知顧客)</button>`;
         if (isDineIn && !order.is_paid) secondaryBtns += `<button style="flex: 1; padding: 10px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="openChangeTableModal('${order.docId}', '${order.table_number}')">🔄 換桌</button>`;
         if (order.is_paid) secondaryBtns += `<div style="flex: 1; padding: 10px; text-align: center; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold;">✅ 已付款 (待出餐)</div>`;
         else {
-          let btnText = isDineIn ? "💰 內用結帳 (清桌)" : "💰 外帶結帳";
+          let btnText = isDineIn ? "💰 內用結帳" : "💰 外帶結帳";
           secondaryBtns += `<button style="flex: 1; padding: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="checkoutOrder('${order.docId}', '${order.table_number}', ${isDineIn})">${btnText}</button>`;
         }
       } else if (viewType === 'completed') {
-        let btnText = isDineIn ? "💰 內用結帳 (清桌)" : "💰 外帶結帳";
+        let btnText = isDineIn ? "💰 內用結帳" : "💰 外帶結帳";
         secondaryBtns += `<button style="flex: 1; padding: 10px; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="checkoutOrder('${order.docId}', '${order.table_number}', ${isDineIn})">${btnText}</button>`;
       } else if (viewType === 'history') {
         secondaryBtns += `<div style="flex: 1; padding: 10px; text-align: center; background: #f5f5f5; color: #888; border: 1px solid #eee; border-radius: 8px; font-weight: bold;">☑️ 訂單已結清歸檔</div>`;
@@ -741,18 +745,36 @@
       `;
     }
 
-    function completeOrder(docId, queueNumber) {
-      showConfirm(`確認 #${queueNumber} 餐點已做好？\n這將會通知顧客前來取餐！`, async (yes) => {
+    // 💡 修正：出餐完成時，若已付款則直接歸檔清桌，若未付款則維持待取餐
+    function completeOrder(docId, queueNumber, isPaid) {
+      const msg = isPaid ? `確認 #${queueNumber} 餐點已做好？\n(此單已付款，點擊後將直接完成並清桌歸檔！)` : `確認 #${queueNumber} 餐點已做好？\n這將會通知顧客前來取餐！`;
+      showConfirm(msg, async (yes) => {
         if (!yes) return;
         try {
           await db.runTransaction(async (transaction) => {
             const statusRef = db.collection("system_status").doc("today");
             const statusDoc = await transaction.get(statusRef);
-            transaction.update(db.collection("orders").doc(docId), { status: "completed" });
+            
+            // 抓取該訂單以確認桌號
+            const orderRef = db.collection("orders").doc(docId);
+            const orderDoc = await transaction.get(orderRef);
+            
+            if (isPaid) {
+              // 已付款：直接設為 completed 並打上 is_paid 結清，釋放桌位
+              transaction.update(orderRef, { status: "completed" });
+              const tName = parseTableName(orderDoc.data().table_number);
+              if (tName) {
+                transaction.set(db.collection("system_status").doc("tables"), { [tName]: "idle" }, { merge: true });
+              }
+            } else {
+              // 未付款：僅變更狀態為 completed，等待後續結帳
+              transaction.update(orderRef, { status: "completed" });
+            }
+
             const currentCompleted = statusDoc.exists ? (statusDoc.data().current_completed_number || 0) : 0;
             if (queueNumber > currentCompleted) transaction.update(statusRef, { current_completed_number: queueNumber });
           });
-          showToast(`✅ #${queueNumber} 已完成，手機已跳號！`);
+          showToast(`✅ #${queueNumber} 已完成出餐！`);
         } catch (err) { showToast("更新失敗，請檢查網路。"); }
       });
     }
@@ -845,38 +867,31 @@
       const totalAmountToCollect = parseInt(document.getElementById("multiCheckoutTotal").innerText);
 
       try {
-        let highestQueueNumberToComplete = 0;
-        let remainingOrdersForTable = currentCheckoutOrders.length - ordersToCheckout.length;
-
         await db.runTransaction(async (transaction) => {
-          const statusRef = db.collection("system_status").doc("today");
-          const statusDoc = await transaction.get(statusRef);
-
           for (const order of ordersToCheckout) {
+            // 💡 修正：結帳時「只標記為已付款 (is_paid: true)」，絕對不改變 pending 狀態，讓單子留在廚房製作區！
             let updateData = { is_paid: true, paid_at: firebase.firestore.FieldValue.serverTimestamp() };
-            if (order.status === "pending") {
-              updateData.status = "completed";
-              if (order.queue_number > highestQueueNumberToComplete) {
-                highestQueueNumberToComplete = order.queue_number;
-              }
-            }
             transaction.update(db.collection("orders").doc(order.docId), updateData);
           }
           
           if (currentCheckoutIsDineIn) {
             const tName = parseTableName(currentCheckoutTable);
             if (tName) {
-              const tablesRef = db.collection("system_status").doc("tables");
-              if (remainingOrdersForTable === 0) {
+              // 檢查該桌是否還有「未結帳」或「還在廚房煮 (pending)」的訂單
+              const checkoutIds = ordersToCheckout.map(o => o.docId);
+              const stillActive = globalActiveOrders.some(o => {
+                if (!o.table_number.includes("內用")) return false;
+                if (parseTableName(o.table_number) !== tName) return false;
+                const willBePaid = o.is_paid || checkoutIds.includes(o.docId);
+                const isStillCooking = o.status === "pending";
+                // 只要還有單沒付錢，或者還有單在廚房煮，這張桌子就不能被清空！
+                return !willBePaid || isStillCooking;
+              });
+
+              if (!stillActive) {
+                const tablesRef = db.collection("system_status").doc("tables");
                 transaction.set(tablesRef, { [tName]: "idle" }, { merge: true });
               }
-            }
-          }
-
-          if (highestQueueNumberToComplete > 0) {
-            const currentCompleted = statusDoc.exists ? (statusDoc.data().current_completed_number || 0) : 0;
-            if (highestQueueNumberToComplete > currentCompleted) {
-              transaction.update(statusRef, { current_completed_number: highestQueueNumberToComplete });
             }
           }
         });
@@ -925,9 +940,11 @@
         closeChangeTableModal();
       } catch (err) { showToast("換桌失敗。"); }
     }
-    // [Section 8: JS 訂單接單與叫號邏輯] End
+  </script>
+  <!-- [Section 8: JS 訂單接單與叫號邏輯] End -->
 
-    // [Section 9: JS 菜單開關邏輯] Start
+  <!-- [Section 9: JS 菜單開關邏輯] Start -->
+  <script>
     function switchMenuSubTab(type) {
       document.getElementById('subTabAvail').classList.remove('active'); document.getElementById('subTabEdit').classList.remove('active');
       document.getElementById('menuAvailView').style.display = 'none'; document.getElementById('menuEditView').style.display = 'none';
@@ -1061,15 +1078,17 @@
     }
 
     function deleteCurrentItem() {
-      showConfirm("確定要永久刪除此餐點嗎？\n(注意：顧客端將立刻無法點購此餐點)", async (yes) => {
+      showConfirm("確定要永久刪除此餐點嗎？", async (yes) => {
         if (!yes || !currentEditItemId) return;
         try { await db.collection("menu_items").doc(currentEditItemId).delete(); showToast("🗑️ 已成功刪除餐點"); closeEditItemModal(); } 
         catch (err) { showToast("刪除失敗"); }
       });
     }
-    // [Section 9: JS 菜單開關邏輯] End
+  </script>
+  <!-- [Section 9: JS 菜單開關邏輯] End -->
 
-    // [Section 10: JS POS代客點餐與購物車] Start
+  <!-- [Section 10: JS POS代客點餐與購物車] Start -->
+  <script>
     let posCurrentCat = "";
     let posCart = [];
     let posActiveItem = null;
@@ -1089,7 +1108,7 @@
       globalTableConfig.forEach(t => {
         const isOccupied = globalTableStatus[t.name] === "occupied";
         const style = isOccupied ? 'style="color: #999; background: #e0e0e0;"' : '';
-        const label = isOccupied ? `內用 - ${t.name} (使用中)` : `內用 - ${t.name}`;
+        const label = isOccupied ? `${t.name} (使用中)` : `${t.name}`;
         html += `<option value="${t.name}" ${style}>${label}</option>`;
       });
       select.innerHTML = html;
