@@ -143,7 +143,7 @@
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.13-FixTransaction
+    v2026.10.14-SmartTableMerge
   </div>
 <!-- [Section 5: HTML 智慧訂單狀態儀表板] End -->
 
@@ -171,6 +171,19 @@
       <div style="display: flex; gap: 10px; margin-top: 16px;">
         <button type="button" onclick="closeOptionModal()" style="flex: 1; padding: 13px; font-size: 15px; font-weight: bold; background: #f0f0f0; color: #555; border: 1px solid #ddd; border-radius: 8px;">取消返回</button>
         <button type="button" class="add-btn" style="flex: 2; padding: 13px; font-size: 15px;" onclick="confirmAddToCart()">加入清單 ($<span id="modalFinalPrice">0</span>)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 💡 智慧併桌詢問視窗 -->
+  <div class="modal-backdrop" id="dineInChoiceModal" style="z-index: 1002;">
+    <div class="center-modal-box" onclick="event.stopPropagation()">
+      <h3 style="color: var(--primary);">⚠️ 桌位使用中</h3>
+      <p style="font-size:14px; color:#424242; margin-bottom:15px;">這桌目前已有客人，請問您是：</p>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+         <button class="add-btn" style="padding:14px; font-size:15px;" onclick="proceedCheckout(' (加單)')">👉 同桌親友 (加點)</button>
+         <button class="add-btn" style="padding:14px; font-size:15px; background:#fff; color:#333; border:1px solid #ccc;" onclick="proceedCheckout(' (併桌)')">👉 陌生人 (與人併桌)</button>
+         <button style="padding:10px; background:none; border:none; color:#888; text-decoration:underline; font-size:13px;" onclick="document.getElementById('dineInChoiceModal').style.display='none'; document.getElementById('submitOrderBtn').disabled=false; document.getElementById('submitOrderBtn').innerText='確認送出訂單';">取消返回</button>
       </div>
     </div>
   </div>
@@ -345,14 +358,47 @@
 
     window.toggleInfoModal = (show) => document.getElementById("infoModal").style.display = show ? "flex" : "none";
 
+    // 💡 步驟1：先檢查桌子狀態
     window.submitOrder = async function() {
       const name = document.getElementById("custName").value.trim(); const phone = document.getElementById("custPhone").value.trim();
       const isDineIn = currentDiningMode.includes("內用");
+      
       if (cart.length === 0) return customAlert("購物車內尚無餐點！");
       if (!isDineIn && (!name || !phone)) return customAlert("外帶請填寫聯絡姓名與電話！");
       if (!isDineIn) { safeSet("order_cust_name", name); safeSet("order_cust_phone", phone); }
 
-      const btn = document.getElementById("submitOrderBtn"); btn.disabled = true; btn.innerText = "訂單送出中...";
+      const btn = document.getElementById("submitOrderBtn"); 
+      btn.disabled = true; btn.innerText = "檢查桌位狀態...";
+
+      if (isDineIn && window.firebaseDb) {
+        const match = currentDiningMode.match(/內用\s*-\s*(\d+)\s*桌/);
+        if (match) {
+          const tableNum = match[1];
+          try {
+            const tableDoc = await window.firebaseDb.collection("system_status").doc("tables").get();
+            if (tableDoc.exists && tableDoc.data()[tableNum] === "occupied") {
+              // 桌子有人，彈出詢問視窗
+              document.getElementById("dineInChoiceModal").style.display = "flex";
+              return; // 暫停送單流程
+            }
+          } catch(e) { console.error(e); }
+        }
+      }
+      
+      // 桌子沒人，直接送出
+      proceedCheckout("");
+    };
+
+    // 💡 步驟2：帶有標籤正式送出訂單
+    window.proceedCheckout = async function(tagString) {
+      document.getElementById("dineInChoiceModal").style.display = "none";
+      const btn = document.getElementById("submitOrderBtn");
+      btn.disabled = true; btn.innerText = "訂單送出中...";
+      
+      const name = document.getElementById("custName").value.trim(); 
+      const phone = document.getElementById("custPhone").value.trim();
+      const isDineIn = currentDiningMode.includes("內用");
+
       let finalQueueNumber = 101; let newDocId = null;
 
       try {
@@ -361,11 +407,8 @@
             const statusRef = window.firebaseDb.collection("system_status").doc("today");
             const tablesRef = window.firebaseDb.collection("system_status").doc("tables");
             
-            // 💡 修正錯誤：在 Transaction 裡，所有的 get() 必須在任何 set() 或 update() 之前執行！
             const statusDoc = await transaction.get(statusRef);
-            const tablesDoc = await transaction.get(tablesRef);
             
-            // 處理排隊號碼寫入
             if (!statusDoc.exists) { 
               transaction.set(statusRef, { last_queue_number: 101, current_completed_number: 100 }); 
             } else { 
@@ -376,22 +419,17 @@
             const newOrderRef = window.firebaseDb.collection("orders").doc();
             newDocId = newOrderRef.id;
 
-            // 處理桌號寫入與加單判斷
             let finalTableString = currentDiningMode;
             if (isDineIn) {
-              const tableMatch = currentDiningMode.match(/內用\s*-\s*(\d+)\s*桌/);
-              if (tableMatch) {
-                const tableNum = tableMatch[1];
-                // 檢查是否已被佔用，如果是就加上(加單)，否則就標記為佔用
-                if (tablesDoc.exists && tablesDoc.data()[tableNum] === "occupied") {
-                  finalTableString = currentDiningMode + " (加單)";
-                } else {
-                  transaction.set(tablesRef, { [tableNum]: "occupied" }, { merge: true });
-                }
+              const match = currentDiningMode.match(/內用\s*-\s*(\d+)\s*桌/);
+              if (match) {
+                const tableNum = match[1];
+                // 加入併桌或加單標籤
+                finalTableString = currentDiningMode + tagString;
+                transaction.set(tablesRef, { [tableNum]: "occupied" }, { merge: true });
               }
             }
 
-            // 建立訂單
             transaction.set(newOrderRef, { queue_number: finalQueueNumber, table_number: finalTableString, customer_name: (isDineIn && !name) ? "內用顧客" : name, customer_phone: (isDineIn && !phone) ? "無" : phone, note: document.getElementById("orderNote").value.trim(), items: cart, total_amount: cart.reduce((sum, i) => sum + i.subtotal, 0), status: "pending", created_at: firebase.firestore.FieldValue.serverTimestamp() });
           });
         }
