@@ -193,6 +193,24 @@
       </div>
     </div>
   </div>
+
+  <!-- 💡 智慧併桌勾選結帳彈窗 -->
+  <div class="modal-overlay" id="multiCheckoutModal">
+    <div class="modal-box" style="max-width: 400px;">
+      <h3 id="multiCheckoutTitle" style="color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">結帳確認</h3>
+      <p style="font-size: 14px; color: #555; margin-bottom: 15px;">請勾選要合併結帳的訂單：</p>
+      <div id="multiCheckoutList" style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px; max-height:40vh; overflow-y:auto;">
+        <!-- 自動生成的勾選清單 -->
+      </div>
+      <div style="text-align: right; font-size: 18px; font-weight: bold; color: var(--primary); margin-bottom: 20px;">
+        總應收金額：$<span id="multiCheckoutTotal">0</span>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeMultiCheckoutModal()">取消</button>
+        <button class="btn-confirm" onclick="confirmMultiCheckout()">確認結帳收錢</button>
+      </div>
+    </div>
+  </div>
 <!-- [Section 3: HTML 共用元件與彈窗] End -->
 
 <!-- [Section 4: HTML 登入畫面] Start -->
@@ -461,8 +479,10 @@
       if (isDineIn) {
         const match = order.table_number.match(/內用\s*-\s*(\d+)\s*桌/);
         const tableNum = match ? match[1] : "?";
-        const isAddon = order.table_number.includes("加單") ? "<span style='font-size:12px; margin-left:4px; font-weight:normal;'>加單</span>" : "";
-        tableBadgeHtml = `<span class="table-badge">${tableNum} 桌 ${isAddon}</span>`;
+        let subTag = "";
+        if (order.table_number.includes("加單")) subTag = "<span style='font-size:12px; margin-left:4px; color:#d32f2f;'>加單</span>";
+        if (order.table_number.includes("併桌")) subTag = "<span style='font-size:12px; margin-left:4px; color:#f57c00;'>併桌</span>";
+        tableBadgeHtml = `<span class="table-badge">${tableNum} 桌 ${subTag}</span>`;
       } else { tableBadgeHtml = `<span class="table-badge takeout-badge">外帶</span>`; }
       
       let itemsHtml = order.items.map(item => `
@@ -518,10 +538,16 @@
       });
     }
 
+    // 💡 智慧併桌：可勾選結帳邏輯
+    let currentCheckoutOrders = [];
+    let currentCheckoutTable = "";
+    let currentCheckoutIsDineIn = false;
+
     function checkoutOrder(docId, tableStr, isDineIn) {
-      let ordersToCheckout = [];
-      let totalAmountToCollect = 0;
-      let displayMessage = "";
+      currentCheckoutTable = tableStr;
+      currentCheckoutIsDineIn = isDineIn;
+      currentCheckoutOrders = [];
+
       const targetOrder = globalActiveOrders.find(o => o.docId === docId);
       if(!targetOrder) return;
 
@@ -529,43 +555,117 @@
         const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
         if (!match) return;
         const targetTableNum = match[1];
-        ordersToCheckout = globalActiveOrders.filter(o => o.table_number.includes(`${targetTableNum} 桌`) && !o.is_paid);
-        totalAmountToCollect = ordersToCheckout.reduce((sum, o) => sum + o.total_amount, 0);
-        const orderNums = ordersToCheckout.map(o => `#${o.queue_number}`).join(', ');
-        displayMessage = `【第 ${targetTableNum} 桌 結帳確認】\n包含單號：${orderNums}\n總應收金額：$${totalAmountToCollect}\n\n確認顧客已付款並要清空此桌位嗎？`;
-      } else {
-        ordersToCheckout = [targetOrder];
-        totalAmountToCollect = targetOrder.total_amount;
-        displayMessage = `【外帶結帳確認】\n單號：#${targetOrder.queue_number}\n應收金額：$${totalAmountToCollect}\n\n確認顧客已付款取餐嗎？`;
-      }
 
-      showConfirm(displayMessage, async (yes) => {
-        if (!yes) return;
-        try {
-          let highestQueueNumberToComplete = 0;
-          await db.runTransaction(async (transaction) => {
-            for (const order of ordersToCheckout) {
-              let updateData = { is_paid: true, paid_at: firebase.firestore.FieldValue.serverTimestamp() };
-              if (order.status === "pending") {
-                updateData.status = "completed";
-                if (order.queue_number > highestQueueNumberToComplete) highestQueueNumberToComplete = order.queue_number;
-              }
-              transaction.update(db.collection("orders").doc(order.docId), updateData);
-            }
-            if (isDineIn) {
-              const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
-              if (match) transaction.set(db.collection("system_status").doc("tables"), { [match[1]]: "idle" }, { merge: true });
-            }
-            if (highestQueueNumberToComplete > 0) {
-              const statusRef = db.collection("system_status").doc("today");
-              const statusDoc = await transaction.get(statusRef);
-              const currentCompleted = statusDoc.exists ? (statusDoc.data().current_completed_number || 0) : 0;
-              if (highestQueueNumberToComplete > currentCompleted) transaction.update(statusRef, { current_completed_number: highestQueueNumberToComplete });
-            }
-          });
-          showToast(`✅ 已成功結帳！共收 $${totalAmountToCollect}`);
-        } catch (err) { console.error(err); showToast("結帳失敗。"); }
+        const tableOrders = globalActiveOrders.filter(o => o.table_number.includes(`${targetTableNum} 桌`) && !o.is_paid);
+        tableOrders.sort((a, b) => a.queue_number - b.queue_number); // 依排隊號碼排序
+        
+        document.getElementById("multiCheckoutTitle").innerText = `【第 ${targetTableNum} 桌】結帳確認`;
+
+        // 生成勾選清單 (併桌預設不勾，主單與加單預設打勾)
+        document.getElementById("multiCheckoutList").innerHTML = tableOrders.map((o, idx) => {
+          const isMerged = o.table_number.includes("併桌") ? false : true; 
+          const checkedStr = isMerged ? "checked" : "";
+          
+          let tagStr = "主單";
+          if (o.table_number.includes("加單")) tagStr = "加單";
+          if (o.table_number.includes("併桌")) tagStr = "併桌";
+
+          return `
+            <label style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:#f9f9f9; border:1px solid #ddd; border-radius:8px; cursor:pointer;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <input type="checkbox" class="checkout-cb" data-idx="${idx}" value="${o.subtotal}" ${checkedStr} onchange="recalcMultiCheckout()" style="width:18px; height:18px;">
+                <span style="font-weight:bold; font-size:15px;">#${o.queue_number} <span style="font-size:12px; color:#888; font-weight:normal;">(${tagStr})</span></span>
+              </div>
+              <span style="color:var(--primary); font-weight:bold;">$${o.total_amount}</span>
+            </label>
+          `;
+        }).join('');
+        currentCheckoutOrders = tableOrders;
+      } else {
+        // 外帶單純結帳
+        document.getElementById("multiCheckoutTitle").innerText = `【外帶結帳】確認`;
+        currentCheckoutOrders = [targetOrder];
+        document.getElementById("multiCheckoutList").innerHTML = `
+          <label style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:#f9f9f9; border:1px solid #ddd; border-radius:8px; cursor:pointer;">
+             <div style="display:flex; align-items:center; gap:10px;">
+                <input type="checkbox" class="checkout-cb" data-idx="0" checked disabled style="width:18px; height:18px;">
+                <span style="font-weight:bold; font-size:15px;">#${targetOrder.queue_number}</span>
+             </div>
+             <span style="color:var(--primary); font-weight:bold;">$${targetOrder.total_amount}</span>
+          </label>
+        `;
+      }
+      recalcMultiCheckout();
+      document.getElementById("multiCheckoutModal").style.display = "flex";
+    }
+
+    function recalcMultiCheckout() {
+      let total = 0;
+      document.querySelectorAll(".checkout-cb").forEach(cb => {
+        if (cb.checked) {
+          const idx = cb.getAttribute("data-idx");
+          total += currentCheckoutOrders[idx].total_amount;
+        }
       });
+      document.getElementById("multiCheckoutTotal").innerText = total;
+    }
+
+    window.closeMultiCheckoutModal = function() {
+      document.getElementById("multiCheckoutModal").style.display = "none";
+    }
+
+    window.confirmMultiCheckout = async function() {
+      let ordersToCheckout = [];
+      document.querySelectorAll(".checkout-cb").forEach(cb => {
+        if (cb.checked) {
+          const idx = cb.getAttribute("data-idx");
+          ordersToCheckout.push(currentCheckoutOrders[idx]);
+        }
+      });
+
+      if (ordersToCheckout.length === 0) return showToast("請至少勾選一筆訂單！");
+      const totalAmountToCollect = parseInt(document.getElementById("multiCheckoutTotal").innerText);
+
+      try {
+        let highestQueueNumberToComplete = 0;
+        let remainingOrdersForTable = currentCheckoutOrders.length - ordersToCheckout.length;
+
+        await db.runTransaction(async (transaction) => {
+          for (const order of ordersToCheckout) {
+            let updateData = { is_paid: true, paid_at: firebase.firestore.FieldValue.serverTimestamp() };
+            if (order.status === "pending") {
+              updateData.status = "completed";
+              if (order.queue_number > highestQueueNumberToComplete) {
+                highestQueueNumberToComplete = order.queue_number;
+              }
+            }
+            transaction.update(db.collection("orders").doc(order.docId), updateData);
+          }
+          
+          if (currentCheckoutIsDineIn) {
+            const match = currentCheckoutTable.match(/內用\s*-\s*(\d+)\s*桌/);
+            if (match) {
+              const tablesRef = db.collection("system_status").doc("tables");
+              // 💡 只有當這桌「所有的單」都結清了，才釋放桌位狀態
+              if (remainingOrdersForTable === 0) {
+                transaction.set(tablesRef, { [match[1]]: "idle" }, { merge: true });
+              }
+            }
+          }
+
+          if (highestQueueNumberToComplete > 0) {
+            const statusRef = db.collection("system_status").doc("today");
+            const statusDoc = await transaction.get(statusRef);
+            const currentCompleted = statusDoc.exists ? (statusDoc.data().current_completed_number || 0) : 0;
+            if (highestQueueNumberToComplete > currentCompleted) {
+              transaction.update(statusRef, { current_completed_number: highestQueueNumberToComplete });
+            }
+          }
+        });
+        
+        showToast(`✅ 結帳成功！共收 $${totalAmountToCollect}`);
+        closeMultiCheckoutModal();
+      } catch (err) { console.error(err); showToast("結帳失敗。"); }
     }
 
     let activeChangeTableDocId = null, activeChangeTableOldNum = null;
@@ -584,11 +684,19 @@
       if (newNum === activeChangeTableOldNum) return showToast("相同桌號！");
       const targetOrder = globalActiveOrders.find(o => o.docId === activeChangeTableDocId);
       if(!targetOrder) return;
-      const isAddon = targetOrder.table_number.includes("加單") ? " (加單)" : "";
+      
+      let subTag = "";
+      if (targetOrder.table_number.includes("加單")) subTag = " (加單)";
+      if (targetOrder.table_number.includes("併桌")) subTag = " (併桌)";
+
       try {
         await db.runTransaction(async (transaction) => {
-          transaction.update(db.collection("orders").doc(activeChangeTableDocId), { table_number: `內用 - ${newNum} 桌${isAddon}` });
-          transaction.set(db.collection("system_status").doc("tables"), { [activeChangeTableOldNum]: "idle", [newNum]: "occupied" }, { merge: true });
+          transaction.update(db.collection("orders").doc(activeChangeTableDocId), { 
+            table_number: `內用 - ${newNum} 桌${subTag}` 
+          });
+          transaction.set(db.collection("system_status").doc("tables"), { 
+            [activeChangeTableOldNum]: "idle", [newNum]: "occupied" 
+          }, { merge: true });
         });
         showToast(`✅ 已成功換至第 ${newNum} 桌！`);
         closeChangeTableModal();
