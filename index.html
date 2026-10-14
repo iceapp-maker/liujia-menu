@@ -88,7 +88,10 @@
       <span>劉家川味牛肉麵</span>
       <span class="table-tag" id="currentTableDisplay"><span id="tableDisplayText">載入中...</span></span>
     </div>
-    <button class="store-info-btn" onclick="toggleInfoModal(true)">營業資訊 & 注意事項 ℹ️</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+      <button class="store-info-btn" onclick="toggleInfoModal(true)">營業資訊 & 注意事項 ℹ️</button>
+      <button id="viewActiveOrdersBtn" onclick="showOrderDashboard()" style="display: none; background: var(--primary); color: #fff; border: none; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(211,47,47,0.3);">📋 已點清單 (<span id="activeOrderCountBadge">0</span>)</button>
+    </div>
   </div>
 
   <div class="modal-backdrop" id="infoModal" onclick="toggleInfoModal(false)">
@@ -130,26 +133,34 @@
 
 <!-- [Section 5: HTML 智慧訂單狀態儀表板] Start -->
   <div id="orderDashboardSection" style="display: none; padding: 20px 16px; max-width: 600px; margin: 0 auto; text-align: center; animation: slideUp 0.3s ease;">
-    <h2 style="color: var(--primary); margin-bottom: 15px;">✅ 訂單已成功送出</h2>
-    
-    <div style="background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 20px; border: 1px solid var(--border);">
-      <p style="font-size: 15px; color: #555; margin-bottom: 5px;">您的訂單取號</p>
-      <div style="font-size: 52px; font-weight: bold; color: var(--primary); margin: 0; line-height: 1;">#<span id="dashboardMyNum">--</span></div>
-      <p style="font-size: 14px; color: #888; margin-top: 10px;">📢 最新取餐叫號：<span id="dashboardCompletedNum" style="font-weight:bold; color:var(--primary); font-size:18px;">#--</span></p>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <h2 style="color: var(--primary); margin: 0; font-size: 20px;">📋 已點餐點與進度</h2>
+      <button onclick="backToMenuFromDashboard()" style="background: #fff; color: #333; border: 1px solid #ccc; padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">➕ 繼續加點 / 返回菜單</button>
     </div>
     
-    <div style="background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); text-align: left; margin-bottom: 20px; border: 1px solid var(--border);">
-      <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 8px; color: var(--text);">訂單明細確認</h4>
-      <div id="dashboardOrderItems" style="font-size: 15px; color: #444; line-height: 1.6;"></div>
-      <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; text-align: right; font-weight: bold; font-size: 18px; color: var(--primary);">
-        總計金額：$<span id="dashboardTotal">0</span>
+    <div style="background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 16px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 14px; color: #555; font-weight: bold;">📢 櫃台最新取餐叫號</span>
+      <span id="dashboardCompletedNum" style="font-weight: 900; color: var(--primary); font-size: 24px;">#--</span>
+    </div>
+    
+    <!-- 動態渲染：本桌所有訂單卡片 (主單 + 加單) -->
+    <div id="dashboardOrdersContainer" style="text-align: left; margin-bottom: 16px;"></div>
+
+    <div style="background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 20px; border: 2px solid var(--primary-light); display: flex; justify-content: space-between; align-items: center;">
+      <div style="text-align: left;">
+        <div style="font-size: 15px; font-weight: bold; color: var(--text);">目前未結帳總計</div>
+        <div id="dashboardShareHint" style="font-size: 12px; color: #888; margin-top: 2px;">包含同桌主單與所有加點</div>
+      </div>
+      <div style="font-weight: 900; font-size: 24px; color: var(--primary);">
+        $<span id="dashboardTotal">0</span>
       </div>
     </div>
-    <div id="dashboardActionArea"></div>
+
+    <button onclick="backToMenuFromDashboard()" style="width: 100%; padding: 14px; border-radius: 10px; background: var(--primary); color: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(211,47,47,0.25);">➕ 繼續加點其他餐點</button>
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.14-UrlSanitizeFix
+    v2026.10.14-SharedTableOrders
   </div>
 <!-- [Section 5: HTML 智慧訂單狀態儀表板] End -->
 
@@ -224,6 +235,8 @@
     let globalTableConfig = []; // 儲存從雲端抓下來的自訂桌號對照表
     let globalTablesStatus = {}; // 💡 儲存各桌目前的佔用狀態
     let cart = []; let myCurrentOrderDocId = null; let myCurrentQueueNum = null; let globalCompletedNum = 0;
+    let activeOrdersList = []; // 💡 儲存本桌/本機目前所有活躍訂單
+    let activeOrdersUnsubscribe = null;
     let activeItem = null; let modalSelectedSize = "小"; let modalSelectedAddons = []; let modalQty = 1;
     
     let alertCallback = null;
@@ -245,6 +258,15 @@
     function safeGet(key) { try { return localStorage.getItem(key) || ""; } catch(e) { return ""; } }
     function safeSet(key, val) { try { localStorage.setItem(key, val); } catch(e) {} }
 
+    function getMyOrderIds() {
+      try { return JSON.parse(safeGet("my_order_doc_ids") || "[]"); } catch(e) { return []; }
+    }
+    function addMyOrderId(id) {
+      if (!id) return;
+      let list = getMyOrderIds();
+      if (!list.includes(id)) { list.push(id); safeSet("my_order_doc_ids", JSON.stringify(list)); }
+    }
+
     function checkDiningSetup() {
       const params = new URLSearchParams(window.location.search);
       let rawTableId = params.get("table");
@@ -257,10 +279,13 @@
         const found = globalTableConfig.find(t => String(t.id).toLowerCase() === String(cleanId).toLowerCase());
         const tableName = found ? found.name : `第 ${cleanId} 桌`;
         currentCleanTableName = tableName;
-        return setDiningStatus(`內用 - ${tableName}`); 
+        setDiningStatus(`內用 - ${tableName}`);
+        if (window.setupActiveOrdersListener) window.setupActiveOrdersListener();
+        return;
       }
       currentCleanTableName = "";
       setDiningStatus("外帶顧客");
+      if (window.setupActiveOrdersListener) window.setupActiveOrdersListener();
     }
 
     function setDiningStatus(text) {
@@ -402,7 +427,6 @@
       btn.disabled = true; btn.innerText = "檢查桌位狀態...";
 
       if (isDineIn && window.firebaseDb) {
-        // 💡 動態桌名萃取：去除 "內用 - " 前綴即為桌名
         let tableName = currentDiningMode.replace("內用 - ", "").trim();
         try {
           const tableDoc = await window.firebaseDb.collection("system_status").doc("tables").get();
@@ -457,61 +481,205 @@
         }
       } catch (err) { console.error(err); customAlert("送出失敗，請檢查網路連線。"); btn.disabled = false; btn.innerText = "確認送出訂單"; return; }
 
-      safeSet("last_cart_backup", JSON.stringify(cart)); safeSet("active_order_doc_id", newDocId); 
+      safeSet("last_cart_backup", JSON.stringify(cart)); 
+      safeSet("active_order_doc_id", newDocId); 
+      addMyOrderId(newDocId); // 💡 記錄到本機點過的單號清單中
+      if (tagString.includes("併桌")) {
+        safeSet("is_merged_stranger_" + currentCleanTableName, "true");
+      } else if (isDineIn) {
+        safeSet("is_merged_stranger_" + currentCleanTableName, "false");
+      }
+
       myCurrentOrderDocId = newDocId; myCurrentQueueNum = finalQueueNumber;
       
-      document.getElementById("orderingSection").style.display = "none"; document.getElementById("orderDashboardSection").style.display = "block";
-      document.getElementById("dashboardMyNum").innerText = finalQueueNumber;
-      document.getElementById("dashboardOrderItems").innerHTML = cart.map(item => `<div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px dashed #eee; padding-bottom:8px;"><div><strong>${item.name}</strong> ${item.size ? `(${item.size})` : ''} <span style="color:var(--primary); font-weight:bold;">x${item.qty}</span><div style="font-size:12px; color:#888; margin-top:2px;">${item.addons.map(a=>a.name).join(', ')}</div></div><div style="font-weight:bold;">$${item.subtotal}</div></div>`).join('');
-      document.getElementById("dashboardTotal").innerText = cart.reduce((sum, i) => sum + i.subtotal, 0);
-
       cart = []; updateCartDisplay(); toggleCartDrawer(false); btn.disabled = false; btn.innerText = "確認送出訂單";
+      document.getElementById("orderNote").value = "";
+      showOrderDashboard();
+    };
+
+    window.showOrderDashboard = function() {
+      document.getElementById("orderingSection").style.display = "none";
+      document.getElementById("orderDashboardSection").style.display = "block";
       updateDashboardStatus();
     };
 
+    window.backToMenuFromDashboard = function() {
+      document.getElementById("orderDashboardSection").style.display = "none";
+      document.getElementById("orderingSection").style.display = "block";
+    };
+
     function updateDashboardStatus() {
-      if (!myCurrentQueueNum) return;
-      const diff = myCurrentQueueNum - globalCompletedNum; const actionArea = document.getElementById("dashboardActionArea");
-      if (diff <= 0) { actionArea.innerHTML = `<div style="background: #d4edda; color: #155724; padding: 16px; border-radius: 12px; font-weight: bold; margin-bottom: 15px; border: 1px solid #c3e6cb;">🎉 您的餐點已完成，請前往櫃台取餐！</div><button onclick="resetToMenu()" style="width: 100%; padding: 14px; border-radius: 10px; background: #f0f0f0; color: #333; border: none; font-size: 16px; font-weight:bold; cursor: pointer;">← 繼續點下一單</button>`; } 
-      else if (diff === 1) { actionArea.innerHTML = `<div style="background: #fff3cd; color: #856404; padding: 14px; border-radius: 12px; font-weight: bold; border: 1px solid #ffeeba; font-size: 14px;">🔥 廚房已開始製作，無法線上修改。</div>`; } 
-      else { actionArea.innerHTML = `<button onclick="cancelAndEditOrder()" style="width: 100%; padding: 14px; border-radius: 10px; background: #ffebee; color: #d32f2f; border: 1px solid #ffcdd2; font-size: 16px; font-weight:bold; cursor: pointer;">✏️ 廚房尚未製作，退回修改訂單</button>`; }
+      const container = document.getElementById("dashboardOrdersContainer");
+      const badgeBtn = document.getElementById("viewActiveOrdersBtn");
+      const badgeCount = document.getElementById("activeOrderCountBadge");
+      const hintEl = document.getElementById("dashboardShareHint");
+
+      if (!activeOrdersList || activeOrdersList.length === 0) {
+        if (badgeBtn) badgeBtn.style.display = "none";
+        if (container) container.innerHTML = `<div style="background:#fff; border-radius:12px; padding:30px 20px; text-align:center; color:#888; border:1px solid var(--border);">目前尚無進行中的未結帳訂單<br><span style="font-size:12px;">(若已結帳清桌，帳單將自動歸檔)</span></div>`;
+        document.getElementById("dashboardTotal").innerText = "0";
+        return;
+      }
+
+      if (badgeBtn) {
+        badgeBtn.style.display = "inline-block";
+        badgeCount.innerText = activeOrdersList.length + "單";
+      }
+
+      const isStranger = currentCleanTableName && safeGet("is_merged_stranger_" + currentCleanTableName) === "true";
+      if (hintEl) {
+        hintEl.innerText = !currentCleanTableName ? "您目前的外帶訂單" : (isStranger ? "您個人的併桌訂單 (已與鄰座隔離)" : `包含【${currentCleanTableName}】同桌主單與親友加點`);
+      }
+
+      let grandTotal = 0;
+      const myIds = getMyOrderIds();
+
+      container.innerHTML = activeOrdersList.map((order, idx) => {
+        grandTotal += (order.total_amount || 0);
+        const isMyPhone = myIds.includes(order.docId);
+        let tagLabel = "主單";
+        if (order.table_number && order.table_number.includes("加單")) tagLabel = "親友加點";
+        if (order.table_number && order.table_number.includes("併桌")) tagLabel = "併桌單";
+        if (!currentCleanTableName) tagLabel = "外帶單";
+
+        // 判斷餐點狀態與是否可退回修改
+        const diff = order.queue_number - globalCompletedNum;
+        let statusBadge = "";
+        let actionBtnHtml = "";
+
+        if (order.status === "completed" || diff <= 0) {
+          statusBadge = `<span style="background:#d4edda; color:#155724; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold;">✅ 已出餐 / 請取餐</span>`;
+        } else if (diff === 1) {
+          statusBadge = `<span style="background:#fff3cd; color:#856404; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold;">🔥 廚房製作中</span>`;
+        } else {
+          statusBadge = `<span style="background:#e3f2fd; color:#0d47a1; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold;">⏳ 排隊候餐中</span>`;
+          if (isMyPhone && !order.is_paid) {
+            actionBtnHtml = `<div style="margin-top:10px; padding-top:10px; border-top:1px solid #f0f0f0; text-align:right;">
+              <button onclick="cancelAndEditOrder('${order.docId}')" style="padding:6px 12px; border-radius:6px; background:#ffebee; color:#d32f2f; border:1px solid #ffcdd2; font-size:13px; font-weight:bold; cursor:pointer;">✏️ 退回修改此單</button>
+            </div>`;
+          }
+        }
+
+        const paidTag = order.is_paid ? `<span style="background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:6px; font-weight:bold;">已付款</span>` : "";
+
+        const itemsHtml = (order.items || []).map(item => `
+          <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed #f0f0f0; font-size:15px;">
+            <div>
+              <strong>${item.name}</strong> ${item.size ? `(${item.size})` : ''} <span style="color:var(--primary); font-weight:bold;">x${item.qty}</span>
+              ${(item.addons && item.addons.length > 0) ? `<div style="font-size:12px; color:#888;">+ ${item.addons.map(a=>a.name).join(', ')}</div>` : ''}
+            </div>
+            <div style="font-weight:bold; color:#444;">$${item.subtotal}</div>
+          </div>
+        `).join('');
+
+        return `
+          <div style="background:#fff; border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:14px; border:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #f5f5f5; padding-bottom:10px; margin-bottom:8px;">
+              <div>
+                <span style="font-size:22px; font-weight:900; color:var(--primary);">#${order.queue_number}</span>
+                <span style="font-size:12px; background:#f0f0f0; color:#555; padding:3px 8px; border-radius:6px; margin-left:6px; font-weight:bold;">${tagLabel}${isMyPhone ? ' (本機)' : ''}</span>
+                ${paidTag}
+              </div>
+              ${statusBadge}
+            </div>
+            <div>${itemsHtml}</div>
+            ${order.note ? `<div style="background:#fffdf0; padding:6px 10px; border-radius:6px; font-size:12px; color:#856404; margin-top:8px; border:1px solid #ffeeba;">📝 備註：${order.note}</div>` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:6px; font-weight:bold; font-size:15px;">
+              <span style="color:#888; font-size:13px;">共 ${(order.items||[]).reduce((s,i)=>s+i.qty,0)} 份餐點</span>
+              <span>單筆小計：<strong style="color:var(--primary); font-size:17px;">$${order.total_amount}</strong></span>
+            </div>
+            ${actionBtnHtml}
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById("dashboardTotal").innerText = grandTotal;
     }
 
-    window.cancelAndEditOrder = async function() {
-       customConfirm("確定要取消並退回購物車修改嗎？\n(原本的排隊號碼將會作廢)", async (yes) => {
+    window.cancelAndEditOrder = async function(targetDocId) {
+       const docIdToCancel = targetDocId || myCurrentOrderDocId;
+       if (!docIdToCancel) return;
+       const targetOrder = activeOrdersList.find(o => o.docId === docIdToCancel);
+
+       customConfirm("確定要取消此筆訂單並退回購物車修改嗎？\n(原本的排隊號碼將會作廢)", async (yes) => {
          if(!yes) return;
          try {
-            if (window.firebaseDb && myCurrentOrderDocId) {
-               await window.firebaseDb.collection("orders").doc(myCurrentOrderDocId).update({ status: "cancelled" });
+            if (window.firebaseDb) {
+               await window.firebaseDb.collection("orders").doc(docIdToCancel).update({ status: "cancelled" });
             }
-            const backup = safeGet("last_cart_backup"); if (backup) cart = JSON.parse(backup);
-            resetToMenu(); updateCartDisplay(); toggleCartDrawer(true); 
+            if (targetOrder && targetOrder.items) {
+               cart = JSON.parse(JSON.stringify(targetOrder.items));
+            } else {
+               const backup = safeGet("last_cart_backup"); if (backup) cart = JSON.parse(backup);
+            }
+            backToMenuFromDashboard(); updateCartDisplay(); toggleCartDrawer(true); 
          } catch(err) { customAlert("取消失敗，請確認網路。"); }
        });
     };
 
     window.resetToMenu = function() {
-       myCurrentOrderDocId = null; myCurrentQueueNum = null; safeSet("active_order_doc_id", "");
-       document.getElementById("orderDashboardSection").style.display = "none"; document.getElementById("orderingSection").style.display = "block";
+       backToMenuFromDashboard();
     };
 <!-- [Section 9: JS 購物車與送單邏輯] End -->
 
 <!-- [Section 10: JS Firebase 監聽與還原] Start -->
+    function parseCleanTableFromOrder(str) {
+      if (!str || !str.includes("內用")) return null;
+      return str.replace("內用 - ", "").replace(" (加單)", "").replace(" (併桌)", "").trim();
+    }
+
+    window.setupActiveOrdersListener = function() {
+      if (!window.firebaseDb) return;
+      if (activeOrdersUnsubscribe) activeOrdersUnsubscribe();
+
+      activeOrdersUnsubscribe = window.firebaseDb.collection("orders")
+        .orderBy("created_at", "desc")
+        .limit(80)
+        .onSnapshot(snapshot => {
+          const myIds = getMyOrderIds();
+          const lastSavedId = safeGet("active_order_doc_id");
+          if (lastSavedId && !myIds.includes(lastSavedId)) myIds.push(lastSavedId);
+
+          const isStranger = currentCleanTableName && safeGet("is_merged_stranger_" + currentCleanTableName) === "true";
+          let filtered = [];
+
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            data.docId = doc.id;
+            if (data.status === "cancelled") return;
+            // 已出餐且已結帳代表已清桌歸檔，不再顯示於顧客當下清單
+            if (data.status === "completed" && data.is_paid) return;
+
+            if (currentCleanTableName) {
+              const orderTable = parseCleanTableFromOrder(data.table_number);
+              if (orderTable === currentCleanTableName) {
+                const isOrderMerged = data.table_number.includes("併桌");
+                if (isStranger) {
+                  // 若本機是併桌陌生人，只看自己這支手機點的單
+                  if (myIds.includes(data.docId)) filtered.push(data);
+                } else {
+                  // 若是同桌親友，看到該桌所有「主單 + 加單」(自動排除陌生人的併桌單，除非是自己點的)
+                  if (!isOrderMerged || myIds.includes(data.docId)) {
+                    filtered.push(data);
+                  }
+                }
+              }
+            } else {
+              // 外帶顧客：只看自己這支手機點過的未結清訂單
+              if (myIds.includes(data.docId)) {
+                filtered.push(data);
+              }
+            }
+          });
+
+          filtered.sort((a, b) => a.queue_number - b.queue_number);
+          activeOrdersList = filtered;
+          updateDashboardStatus();
+        });
+    };
+
     window.restoreActiveOrder = async function() {
-      const savedDocId = safeGet("active_order_doc_id"); if (!savedDocId || !window.firebaseDb) return;
-      try {
-        const docSnap = await window.firebaseDb.collection("orders").doc(savedDocId).get();
-        if (docSnap.exists) {
-          const data = docSnap.data();
-          if (data.status === "pending") {
-            myCurrentOrderDocId = savedDocId; myCurrentQueueNum = data.queue_number; cart = data.items || [];
-            document.getElementById("orderingSection").style.display = "none"; document.getElementById("orderDashboardSection").style.display = "block";
-            document.getElementById("dashboardMyNum").innerText = data.queue_number;
-            document.getElementById("dashboardOrderItems").innerHTML = cart.map(item => `<div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px dashed #eee; padding-bottom:8px;"><div><strong>${item.name}</strong> ${item.size ? `(${item.size})` : ''} <span style="color:var(--primary); font-weight:bold;">x${item.qty}</span><div style="font-size:12px; color:#888; margin-top:2px;">${(item.addons||[]).map(a=>a.name).join(', ')}</div></div><div style="font-weight:bold;">$${item.subtotal}</div></div>`).join('');
-            document.getElementById("dashboardTotal").innerText = data.total_amount; updateDashboardStatus();
-          } else safeSet("active_order_doc_id", "");
-        }
-      } catch (err) {}
+      setupActiveOrdersListener();
     };
 
     let storeSettings = null;
