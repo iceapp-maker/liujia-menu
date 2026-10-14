@@ -8,6 +8,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
 
+  <!-- [Section 2: CSS 樣式設定] Start -->
   <style>
     :root { --primary: #d32f2f; --primary-dark: #b71c1c; --bg: #f4f6f8; --card: #ffffff; --text: #333333; --gray: #888888; --success: #2e7d32; --warning: #f57c00; }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -89,10 +90,11 @@
     .pos-cart-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #ccc; font-size: 14px;}
     .pos-qty-btn { width: 28px; height: 28px; background: #eee; border:none; border-radius: 4px; font-weight: bold; cursor:pointer;}
   </style>
+  <!-- [Section 2: CSS 樣式設定] End -->
 </head>
 <body>
 
-  <!-- 共用元件與彈窗 -->
+  <!-- [Section 3: HTML 共用元件與彈窗] Start -->
   <div id="toast" class="toast">訊息內容</div>
   
   <div class="modal-overlay" id="confirmModal">
@@ -109,7 +111,6 @@
     <div class="modal-box" style="max-width: 320px; text-align: center;">
       <h3 style="margin-bottom: 15px; color: var(--primary);">為客人更改桌號</h3>
       <p id="currentTableDisplay" style="font-size: 14px; color: #555; margin-bottom: 10px; font-weight: bold;">目前：</p>
-      <!-- 動態載入桌名 -->
       <select id="newTableSelect" class="form-input" style="font-weight: bold; margin-bottom:20px;"></select>
       <div class="modal-btns">
         <button class="btn-cancel" onclick="closeChangeTableModal()">取消</button>
@@ -187,6 +188,7 @@
     </div>
   </div>
 
+  <!-- 智慧併桌勾選結帳彈窗 -->
   <div class="modal-overlay" id="multiCheckoutModal">
     <div class="modal-box" style="max-width: 400px;">
       <h3 id="multiCheckoutTitle" style="color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">結帳確認</h3>
@@ -203,8 +205,9 @@
       </div>
     </div>
   </div>
+  <!-- [Section 3: HTML 共用元件與彈窗] End -->
 
-  <!-- 登入畫面 -->
+  <!-- [Section 4: HTML 登入畫面] Start -->
   <div id="loginScreen">
     <div class="login-box">
       <h2 style="margin-bottom: 8px;">店家後台登入</h2>
@@ -213,8 +216,9 @@
       <button class="btn-login" onclick="verifyPin()">登入系統</button>
     </div>
   </div>
+  <!-- [Section 4: HTML 登入畫面] End -->
 
-  <!-- 後台主介面與版面配置 -->
+  <!-- [Section 5: HTML 後台主介面與版面配置] Start -->
   <div id="adminDashboard">
     <div class="navbar">
       <h1>櫃台管理看板</h1>
@@ -300,7 +304,7 @@
         <div style="display:flex; gap:10px; margin-bottom:15px;">
           <input type="text" id="newTableId" class="form-input" placeholder="網址 ID (留白將自動編號)" style="flex:1;">
           <input type="text" id="newTableName" class="form-input" placeholder="顯示名稱 (例: 第 1 桌, 包廂)" style="flex:2;">
-          <button class="add-btn" style="padding:10px 15px; font-size:14px; border-radius:8px;" onclick="addNewTable()">➕ 新增桌位</button>
+          <button class="add-btn" style="padding:10px 15px; font-size:14px; border-radius:8px; background:var(--primary); color:white; border:none; cursor:pointer;" onclick="addNewTable()">➕ 新增</button>
         </div>
         <div id="tableConfigList" style="display:flex; flex-direction:column; gap:8px;"></div>
       </div>
@@ -343,7 +347,9 @@
       </div>
     </div>
   </div>
+  <!-- [Section 5: HTML 後台主介面與版面配置] End -->
 
+  <!-- [Section 6: JS 系統變數與共用函式] Start -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAm2HTW9fmse5lXnzrkMyEQQYZpAzQoHD4",
@@ -382,15 +388,16 @@
       if (confirmCallback) confirmCallback(result);
     }
 
-    // 💡 核心桌名解析函式
+    // 💡 全新核心：完美解析自訂桌名的函數 (過濾加單、併桌標籤)
     function parseTableName(str) {
       if (!str || !str.includes("內用")) return null;
       let name = str.replace("內用 - ", "").trim();
       name = name.replace(" (加單)", "").replace(" (併桌)", "").trim();
       return name;
     }
+    // [Section 6: JS 系統變數與共用函式] End
 
-    // --- 登入與狀態管理 ---
+    // [Section 7: JS 登入與狀態管理] Start
     async function verifyPin() {
       const input = document.getElementById("pinInput").value;
       if (!input) return showToast("請輸入密碼！");
@@ -536,8 +543,9 @@
         try { await db.collection("system_settings").doc("tables_config").update({ tables: newList }); showToast("🗑️ 桌位已刪除"); } catch(e) { showToast("刪除失敗"); }
       });
     }
+    // [Section 7: JS 登入與狀態管理] End
 
-    // --- 訂單接單與叫號邏輯 ---
+    // [Section 8: JS 訂單接單與叫號邏輯] Start
     function startListeningTables() {
       db.collection("system_status").doc("tables").onSnapshot(doc => {
         if (doc.exists) {
@@ -917,8 +925,9 @@
         closeChangeTableModal();
       } catch (err) { showToast("換桌失敗。"); }
     }
+    // [Section 8: JS 訂單接單與叫號邏輯] End
 
-    // --- 菜單開關邏輯 ---
+    // [Section 9: JS 菜單開關邏輯] Start
     function switchMenuSubTab(type) {
       document.getElementById('subTabAvail').classList.remove('active'); document.getElementById('subTabEdit').classList.remove('active');
       document.getElementById('menuAvailView').style.display = 'none'; document.getElementById('menuEditView').style.display = 'none';
@@ -1058,8 +1067,9 @@
         catch (err) { showToast("刪除失敗"); }
       });
     }
+    // [Section 9: JS 菜單開關邏輯] End
 
-    // --- 代客點餐 POS 邏輯 ---
+    // [Section 10: JS POS代客點餐與購物車] Start
     let posCurrentCat = "";
     let posCart = [];
     let posActiveItem = null;
@@ -1221,8 +1231,6 @@
       });
     };
   </script>
+  <!-- [Section 10: JS POS代客點餐與購物車] End -->
 </body>
 </html>
-```
-
-這次保證一切都完美就緒了！當您打開後台，不僅可以去「餐點管理」隨意增刪菜單，還可以點開熱騰騰剛出爐的「📊 營運報表」，看看您在測試期間賣了多少錢喔！
