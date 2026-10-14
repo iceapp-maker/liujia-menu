@@ -231,6 +231,8 @@
       <div class="tab active" onclick="switchTab('ordersTab', this)">即時接單</div>
       <div class="tab" onclick="switchTab('posTab', this)">➕ 代客點餐</div>
       <div class="tab" onclick="switchTab('historyTab', this)">歷史紀錄</div>
+      <!-- 💡 新增：營運報表 Tab -->
+      <div class="tab" onclick="switchTab('reportTab', this)">📊 營運報表</div>
       <div class="tab" onclick="switchTab('menuTab', this)">餐點管理</div>
       <div class="tab" onclick="switchTab('settingsTab', this)">⚙️ 店務設定</div>
     </div>
@@ -271,6 +273,16 @@
       <div id="historyOrdersList"></div>
     </div>
 
+    <!-- 💡 新增：營運報表介面 -->
+    <div id="reportTab" class="content-section">
+      <div style="background:#fff; padding:20px; border-radius:12px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); text-align:center;">
+        <h2 style="color:var(--primary); margin-bottom:5px;">💰 營運報表與銷售統計</h2>
+        <p style="font-size:13px; color:#888;">統計所有「已結帳」的訂單資料。點擊日期可查看當日熱銷排行榜。</p>
+      </div>
+      <!-- 報表列表容器 -->
+      <div id="reportDailyList"></div>
+    </div>
+
     <div id="menuTab" class="content-section">
       <div class="sub-tabs">
         <div id="subTabAvail" class="sub-tab active" onclick="switchMenuSubTab('avail')">今日售完狀態</div>
@@ -292,7 +304,7 @@
     </div>
 
     <div id="settingsTab" class="content-section">
-      <!-- 💡 全新功能：桌數自訂與命名管理 -->
+      <!-- 桌數自訂與命名管理 -->
       <div style="background:#fff; padding:20px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); margin-bottom:20px;">
         <h3 style="margin-bottom:15px; color:var(--primary-dark);">🪑 桌位配置管理</h3>
         <p style="font-size:13px; color:#888; margin-bottom:15px; line-height: 1.5;">請新增您的實體桌位，前台網址參數 `?table=ID` 將會自動轉換為此處的顯示名稱。</p>
@@ -555,7 +567,6 @@
 <!-- [Section 7: JS 登入與狀態管理] End -->
   
 <!-- [Section 8: JS 訂單接單與叫號邏輯] Start -->
-  <script>
     function startListeningTables() {
       db.collection("system_status").doc("tables").onSnapshot(doc => {
         if (doc.exists) {
@@ -565,12 +576,18 @@
       });
     }
 
+    // 💡 每日報表全域變數
+    let globalDailyReports = {}; 
+
     function startListeningOrders() {
       db.collection("orders").orderBy("created_at", "desc").limit(100).onSnapshot(snapshot => {
         let pendingOrders = [];
         let completedOrders = [];
         let historyOrders = []; 
         globalActiveOrders = []; 
+        
+        // 重置報表資料
+        globalDailyReports = {};
 
         snapshot.forEach(doc => {
           const data = doc.data();
@@ -580,7 +597,37 @@
           
           if (data.status === "pending") pendingOrders.push(data);
           else if (data.status === "completed" && !data.is_paid) completedOrders.push(data);
-          else if (data.status === "completed" && data.is_paid) historyOrders.push(data);
+          else if (data.status === "completed" && data.is_paid) {
+            historyOrders.push(data);
+            
+            // 📊 報表統計邏輯：只有已結帳的訂單才列入統計
+            if (data.created_at) {
+              const orderDate = new Date(data.created_at.toDate());
+              // 產生 YYYY/MM/DD 的日期字串作為分組 Key
+              const dateStr = orderDate.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+              
+              if (!globalDailyReports[dateStr]) {
+                globalDailyReports[dateStr] = { totalRevenue: 0, orderCount: 0, itemSales: {} };
+              }
+              
+              // 累加總額與單數
+              globalDailyReports[dateStr].totalRevenue += (data.total_amount || 0);
+              globalDailyReports[dateStr].orderCount += 1;
+              
+              // 統計每項餐點賣了多少份
+              if (data.items && Array.isArray(data.items)) {
+                data.items.forEach(item => {
+                  let itemNameWithDesc = item.name;
+                  if (item.size) itemNameWithDesc += ` (${item.size})`; // 區分大小碗
+                  
+                  if (!globalDailyReports[dateStr].itemSales[itemNameWithDesc]) {
+                    globalDailyReports[dateStr].itemSales[itemNameWithDesc] = 0;
+                  }
+                  globalDailyReports[dateStr].itemSales[itemNameWithDesc] += (item.qty || 1);
+                });
+              }
+            }
+          }
         });
 
         pendingOrders.sort((a, b) => a.queue_number - b.queue_number);
@@ -593,6 +640,7 @@
           `<p style="text-align: center; color: #aaa; padding: 10px;">目前無等待結帳或取餐的訂單</p>` : 
           completedOrders.map(order => buildOrderCard(order, 'completed')).join('');
 
+        // 渲染歷史紀錄 (不變)
         let historyGroups = {};
         historyOrders.forEach(order => {
            let dStr = order.created_at ? new Date(order.created_at.toDate()).toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'}) : "未知日期";
@@ -620,7 +668,72 @@
           `;
         }
         document.getElementById("historyOrdersList").innerHTML = historyHtml === "" ? `<p style="text-align: center; color: #aaa; padding: 20px;">尚無歷史紀錄</p>` : historyHtml;
+        
+        // 📊 觸發報表渲染
+        renderDailyReports();
       });
+    }
+
+    // 💡 渲染營運報表畫面
+    function renderDailyReports() {
+      let reportHtml = "";
+      
+      // 將日期由新到舊排序
+      const sortedDates = Object.keys(globalDailyReports).sort((a, b) => new Date(b) - new Date(a));
+      
+      if (sortedDates.length === 0) {
+        document.getElementById("reportDailyList").innerHTML = `<p style="text-align: center; color: #aaa; padding: 20px;">目前尚無已結帳的營業資料</p>`;
+        return;
+      }
+
+      sortedDates.forEach(dateStr => {
+        const report = globalDailyReports[dateStr];
+        
+        // 將熱銷品項轉換成陣列，並依照銷量排序 (由高到低)
+        let sortedItems = Object.entries(report.itemSales).map(([name, qty]) => ({ name, qty }));
+        sortedItems.sort((a, b) => b.qty - a.qty);
+        
+        let itemsHtml = sortedItems.map((item, index) => {
+          // 前三名加上名次標籤
+          let rankLabel = "";
+          if(index === 0) rankLabel = "🥇 ";
+          else if(index === 1) rankLabel = "🥈 ";
+          else if(index === 2) rankLabel = "🥉 ";
+          
+          return `
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #eee; font-size:15px;">
+              <span>${rankLabel}${item.name}</span>
+              <span style="font-weight:bold; color:var(--primary);">售出 ${item.qty} 份</span>
+            </div>
+          `;
+        }).join('');
+
+        // 判斷是否為今天，預設展開今天
+        const isToday = dateStr === new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        const displayStyle = isToday ? "block" : "none";
+        const icon = isToday ? "📂" : "📁";
+
+        reportHtml += `
+          <div style="background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; overflow: hidden; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+            <!-- 報表卡片 Header (可點擊收合) -->
+            <div onclick="toggleHistoryGroup(this)" style="padding: 16px; background: #fdfdfd; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #f0f0f0;">
+              <div>
+                <div style="font-size:14px; color:#666; font-weight:bold; margin-bottom:4px;"><span class="group-icon">${icon}</span> ${dateStr}</div>
+                <div style="font-size:24px; font-weight:900; color:var(--primary);">$${report.totalRevenue.toLocaleString()} <span style="font-size:13px; color:#888; font-weight:normal;">(共接 ${report.orderCount} 單)</span></div>
+              </div>
+              <span class="toggle-arrow" style="color: #999; font-size:18px;">${isToday ? '▼' : '▶'}</span>
+            </div>
+            
+            <!-- 報表卡片 Content (熱銷明細) -->
+            <div class="group-content" style="display: ${displayStyle}; padding: 16px 20px; background: #fff;">
+              <h4 style="margin: 0 0 10px 0; color: var(--gray); border-bottom: 2px solid #eee; padding-bottom: 6px; font-size:14px;">🔥 當日熱銷排行榜 (備料參考)</h4>
+              ${itemsHtml}
+            </div>
+          </div>
+        `;
+      });
+      
+      document.getElementById("reportDailyList").innerHTML = reportHtml;
     }
 
     window.toggleHistoryGroup = function(headerElement) {
@@ -645,12 +758,12 @@
       const isDineIn = order.table_number.includes("內用");
       let tableBadgeHtml = "";
       if (isDineIn) {
-        // 💡 智慧解析桌名
-        let tableName = parseTableName(order.table_number) || "?";
+        const match = order.table_number.match(/內用\s*-\s*(\d+)\s*桌/);
+        const tableNum = match ? match[1] : "?";
         let subTag = "";
         if (order.table_number.includes("加單")) subTag = "<span style='font-size:12px; margin-left:4px; color:#d32f2f;'>加單</span>";
         if (order.table_number.includes("併桌")) subTag = "<span style='font-size:12px; margin-left:4px; color:#f57c00;'>併桌</span>";
-        tableBadgeHtml = `<span class="table-badge">${tableName} ${subTag}</span>`;
+        tableBadgeHtml = `<span class="table-badge">${tableNum} 桌 ${subTag}</span>`;
       } else { tableBadgeHtml = `<span class="table-badge takeout-badge">外帶</span>`; }
       
       let itemsHtml = order.items.map(item => `
@@ -706,6 +819,7 @@
       });
     }
 
+    // 💡 智慧併桌：可勾選結帳邏輯
     let currentCheckoutOrders = [];
     let currentCheckoutTable = "";
     let currentCheckoutIsDineIn = false;
@@ -719,18 +833,16 @@
       if(!targetOrder) return;
 
       if (isDineIn) {
-        // 💡 動態解析要結帳的桌名
-        const targetTableName = parseTableName(tableStr);
-        if (!targetTableName) return;
+        const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
+        if (!match) return;
+        const targetTableNum = match[1];
 
-        const tableOrders = globalActiveOrders.filter(o => {
-          if (!o.table_number.startsWith("內用")) return false;
-          return parseTableName(o.table_number) === targetTableName && !o.is_paid;
-        });
-        tableOrders.sort((a, b) => a.queue_number - b.queue_number);
+        const tableOrders = globalActiveOrders.filter(o => o.table_number.includes(`${targetTableNum} 桌`) && !o.is_paid);
+        tableOrders.sort((a, b) => a.queue_number - b.queue_number); // 依排隊號碼排序
         
-        document.getElementById("multiCheckoutTitle").innerText = `【${targetTableName}】結帳確認`;
+        document.getElementById("multiCheckoutTitle").innerText = `【第 ${targetTableNum} 桌】結帳確認`;
 
+        // 生成勾選清單 (併桌預設不勾，主單與加單預設打勾)
         document.getElementById("multiCheckoutList").innerHTML = tableOrders.map((o, idx) => {
           const isMerged = o.table_number.includes("併桌") ? false : true; 
           const checkedStr = isMerged ? "checked" : "";
@@ -751,6 +863,7 @@
         }).join('');
         currentCheckoutOrders = tableOrders;
       } else {
+        // 外帶單純結帳
         document.getElementById("multiCheckoutTitle").innerText = `【外帶結帳】確認`;
         currentCheckoutOrders = [targetOrder];
         document.getElementById("multiCheckoutList").innerHTML = `
@@ -814,11 +927,12 @@
           }
           
           if (currentCheckoutIsDineIn) {
-            const targetTableName = parseTableName(currentCheckoutTable);
-            if (targetTableName) {
+            const match = currentCheckoutTable.match(/內用\s*-\s*(\d+)\s*桌/);
+            if (match) {
               const tablesRef = db.collection("system_status").doc("tables");
+              // 只有當這桌「所有的單」都結清了，才釋放桌位狀態
               if (remainingOrdersForTable === 0) {
-                transaction.set(tablesRef, { [targetTableName]: "idle" }, { merge: true });
+                transaction.set(tablesRef, { [match[1]]: "idle" }, { merge: true });
               }
             }
           }
@@ -836,26 +950,20 @@
       } catch (err) { console.error(err); showToast("結帳失敗。"); }
     }
 
-    let activeChangeTableDocId = null, activeChangeTableName = null;
+    let activeChangeTableDocId = null, activeChangeTableOldNum = null;
     function openChangeTableModal(docId, tableStr) {
-      if (!tableStr.includes("內用")) return;
-      activeChangeTableName = parseTableName(tableStr);
+      const match = tableStr.match(/內用\s*-\s*(\d+)\s*桌/);
+      if (!match) return; 
+      activeChangeTableOldNum = match[1];
       activeChangeTableDocId = docId;
-      document.getElementById("currentTableDisplay").innerText = `目前：${activeChangeTableName}`;
-      
-      // 💡 動態載入桌名清單供選擇
-      let html = "";
-      globalTableConfig.forEach(t => {
-        html += `<option value="${t.name}">${t.name}</option>`;
-      });
-      document.getElementById("newTableSelect").innerHTML = html;
+      document.getElementById("currentTableDisplay").innerText = `目前：第 ${activeChangeTableOldNum} 桌`;
       document.getElementById("changeTableModal").style.display = "flex";
     }
     function closeChangeTableModal() { document.getElementById("changeTableModal").style.display = "none"; }
 
     async function confirmChangeTable() {
-      const newName = document.getElementById("newTableSelect").value;
-      if (newName === activeChangeTableName) return showToast("相同桌號！");
+      const newNum = document.getElementById("newTableSelect").value;
+      if (newNum === activeChangeTableOldNum) return showToast("相同桌號！");
       const targetOrder = globalActiveOrders.find(o => o.docId === activeChangeTableDocId);
       if(!targetOrder) return;
       
@@ -866,17 +974,16 @@
       try {
         await db.runTransaction(async (transaction) => {
           transaction.update(db.collection("orders").doc(activeChangeTableDocId), { 
-            table_number: `內用 - ${newName}${subTag}` 
+            table_number: `內用 - ${newNum} 桌${subTag}` 
           });
           transaction.set(db.collection("system_status").doc("tables"), { 
-            [activeChangeTableName]: "idle", [newName]: "occupied" 
+            [activeChangeTableOldNum]: "idle", [newNum]: "occupied" 
           }, { merge: true });
         });
-        showToast(`✅ 已成功換至 ${newName}！`);
+        showToast(`✅ 已成功換至第 ${newNum} 桌！`);
         closeChangeTableModal();
       } catch (err) { showToast("換桌失敗。"); }
     }
-  </script>
 <!-- [Section 8: JS 訂單接單與叫號邏輯] End -->
 
 <!-- [Section 9: JS 菜單開關邏輯] Start -->
