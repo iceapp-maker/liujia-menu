@@ -103,6 +103,13 @@
       <button class="add-btn" style="width: 100%; margin-top: 10px;" onclick="toggleInfoModal(false)">關閉</button>
     </div>
   </div>
+
+  <!-- 💡 新增：全螢幕營業時間阻擋遮罩 -->
+  <div id="closedOverlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 10000; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; color: white;">
+    <div style="font-size: 70px; margin-bottom: 20px;">🛑</div>
+    <h2 id="closedTitle" style="margin-bottom: 15px; color: #ffcdd2; font-size: 26px;">目前暫停接單</h2>
+    <p id="closedMessage" style="font-size: 16px; line-height: 1.6; color: #ddd; white-space: pre-line;"></p>
+  </div>
 <!-- [Section 3: HTML 頂部導覽與基本彈窗] End -->
 
 <!-- [Section 4: HTML 點餐區域與購物車入口] Start -->
@@ -491,6 +498,51 @@
         }
       } catch (err) {}
     };
+
+    // 💡 店休防護機制邏輯
+    let storeSettings = null;
+    let timeCheckInterval = null;
+
+    function checkStoreStatus() {
+      if (!storeSettings) return;
+      const now = new Date();
+      const day = now.getDay(); // 0(日) ~ 6(六)
+      // 將時間轉為 HH:MM 格式，補零比較
+      const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+      const overlay = document.getElementById("closedOverlay");
+
+      // 1. 最高優先權：老闆手動強制關閉
+      if (storeSettings.manual_close) {
+        document.getElementById("closedTitle").innerText = "⚠️ 臨時店休中";
+        document.getElementById("closedMessage").innerText = "非常抱歉，本店目前臨時暫停線上接單。\n若有疑問請洽詢櫃台人員。";
+        overlay.style.display = "flex"; return;
+      }
+
+      // 2. 檢查公休日
+      if (storeSettings.closed_days && storeSettings.closed_days.includes(day)) {
+        document.getElementById("closedTitle").innerText = "😴 今日公休";
+        document.getElementById("closedMessage").innerText = "本店今日為公休日，\n期待明日再為您服務！";
+        overlay.style.display = "flex"; return;
+      }
+
+      // 3. 檢查營業時段
+      let isOpen = false;
+      if (storeSettings.hours && storeSettings.hours.length > 0) {
+        for (const h of storeSettings.hours) {
+          const [start, end] = h.split('-');
+          if (timeStr >= start && timeStr <= end) { isOpen = true; break; }
+        }
+      } else { isOpen = true; } // 若老闆沒設定時段，預設全天開放
+
+      if (!isOpen) {
+        document.getElementById("closedTitle").innerText = "⏰ 非營業時間";
+        document.getElementById("closedMessage").innerText = `本店目前非營業時間。\n\n【今日營業時段】\n${storeSettings.hours.join('\n')}`;
+        overlay.style.display = "flex"; return;
+      }
+
+      // 通過所有檢查，關閉遮罩
+      overlay.style.display = "none";
+    }
   </script>
 
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
@@ -515,6 +567,15 @@
               const dashboardElem = document.getElementById("dashboardCompletedNum");
               if (dashboardElem) dashboardElem.innerText = `#${globalCompletedNum}`;
               updateDashboardStatus();
+            }
+          });
+
+          // 💡 監聽店務設定，並啟動每 30 秒的時間巡邏
+          window.firebaseDb.collection("system_settings").doc("store_info").onSnapshot(doc => {
+            if (doc.exists) {
+              storeSettings = doc.data();
+              checkStoreStatus();
+              if (!timeCheckInterval) timeCheckInterval = setInterval(checkStoreStatus, 30000);
             }
           });
         }
