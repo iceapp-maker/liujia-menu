@@ -297,7 +297,7 @@
         <h3 style="margin-bottom:15px; color:var(--primary-dark);">🪑 桌位配置管理</h3>
         <p style="font-size:13px; color:#888; margin-bottom:15px; line-height: 1.5;">請新增您的實體桌位，前台網址參數 `?table=ID` 將會自動轉換為此處的顯示名稱。</p>
         <div style="display:flex; gap:10px; margin-bottom:15px;">
-          <input type="text" id="newTableId" class="form-input" placeholder="網址參數ID (例: 1, vip)" style="flex:1;">
+          <input type="text" id="newTableId" class="form-input" placeholder="網址 ID (留白將自動編號)" style="flex:1;">
           <input type="text" id="newTableName" class="form-input" placeholder="顯示名稱 (例: 第 1 桌, 包廂)" style="flex:2;">
           <button class="add-btn" style="padding:10px 15px; font-size:14px; border-radius:8px;" onclick="addNewTable()">➕ 新增桌位</button>
         </div>
@@ -514,11 +514,23 @@
     }
 
     async function addNewTable() {
-      const id = document.getElementById("newTableId").value.trim();
+      let id = document.getElementById("newTableId").value.trim();
       const name = document.getElementById("newTableName").value.trim();
-      if(!id || !name) return showToast("請填寫參數 ID 與顯示名稱！");
+      
+      if(!name) return showToast("請填寫顯示名稱！");
+
+      // 💡 自動編號邏輯：如果沒填 ID，自動尋找下一個可用的數字
+      if (!id) {
+        let nextNum = 1;
+        while (globalTableConfig.find(t => t.id === String(nextNum))) {
+          nextNum++;
+        }
+        id = String(nextNum);
+      }
+
       if(name.includes("加單") || name.includes("併桌")) return showToast("名稱不可包含系統保留字 (加單/併桌)！");
-      if(globalTableConfig.find(t => t.id === id || t.name === name)) return showToast("ID 或顯示名稱已重複！");
+      if(globalTableConfig.find(t => t.id === id)) return showToast("ID 已重複，請使用其他 ID！");
+      if(globalTableConfig.find(t => t.name === name)) return showToast("顯示名稱已重複！");
       
       const newList = [...globalTableConfig, {id, name}];
       try {
@@ -541,7 +553,7 @@
     }
   </script>
 <!-- [Section 7: JS 登入與狀態管理] End -->
-
+  
 <!-- [Section 8: JS 訂單接單與叫號邏輯] Start -->
   <script>
     function startListeningTables() {
