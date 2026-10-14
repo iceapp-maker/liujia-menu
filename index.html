@@ -149,7 +149,7 @@
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #d0d0d0; padding: 10px 0 40px; user-select: none;">
-    v2026.10.14-DynamicTables
+    v2026.10.14-UrlSanitizeFix
   </div>
 <!-- [Section 5: HTML 智慧訂單狀態儀表板] End -->
 
@@ -220,7 +220,9 @@
   <script>
     let MENU_DATA = []; let isRiceAvailable = true; 
     let currentDiningMode = "外帶顧客"; 
-    let globalTableConfig = []; // 💡 儲存從雲端抓下來的自訂桌號對照表
+    let currentCleanTableName = ""; // 💡 儲存乾淨的純桌名 (如: "第 3 桌")
+    let globalTableConfig = []; // 儲存從雲端抓下來的自訂桌號對照表
+    let globalTablesStatus = {}; // 💡 儲存各桌目前的佔用狀態
     let cart = []; let myCurrentOrderDocId = null; let myCurrentQueueNum = null; let globalCompletedNum = 0;
     let activeItem = null; let modalSelectedSize = "小"; let modalSelectedAddons = []; let modalQty = 1;
     
@@ -245,19 +247,38 @@
 
     function checkDiningSetup() {
       const params = new URLSearchParams(window.location.search);
-      let tableId = params.get("table");
-      if (tableId) { 
-        // 💡 智慧比對桌名：拿網址的 ID 去 config 找對應的顯示名稱
-        const found = globalTableConfig.find(t => t.id === tableId);
-        const tableName = found ? found.name : `${tableId} 桌`;
+      let rawTableId = params.get("table");
+      if (rawTableId) { 
+        // 💡 終極防呆洗淨：過濾掉不小心複製進來的 Markdown 語法或網址 (如 "3](https://...")，只保留開頭的英文或數字 ID
+        let cleanId = rawTableId.split(/[\]\(\s\?&#h]/)[0].trim();
+        if (!cleanId) cleanId = rawTableId.trim();
+
+        // 拿洗乾淨的 ID 去 config 找對應的顯示名稱
+        const found = globalTableConfig.find(t => String(t.id).toLowerCase() === String(cleanId).toLowerCase());
+        const tableName = found ? found.name : `第 ${cleanId} 桌`;
+        currentCleanTableName = tableName;
         return setDiningStatus(`內用 - ${tableName}`); 
       }
+      currentCleanTableName = "";
       setDiningStatus("外帶顧客");
     }
 
     function setDiningStatus(text) {
       currentDiningMode = text;
-      document.getElementById("tableDisplayText").innerText = text; document.getElementById("drawerDiningDisplay").value = text;
+      updateHeaderTableBadge();
+      const drawerInput = document.getElementById("drawerDiningDisplay");
+      if (drawerInput) drawerInput.value = text;
+    }
+
+    // 💡 根據桌位是否使用中，動態更新右上角標籤提示
+    function updateHeaderTableBadge() {
+      const displayElem = document.getElementById("tableDisplayText");
+      if (!displayElem) return;
+      if (currentCleanTableName && globalTablesStatus[currentCleanTableName] === "occupied") {
+        displayElem.innerHTML = `${currentDiningMode} <span style="background:#d32f2f; color:#fff; padding:1px 5px; border-radius:4px; font-size:11px; margin-left:4px;">用餐中</span>`;
+      } else {
+        displayElem.innerText = currentDiningMode;
+      }
     }
 
     function initCustomerInfo() {
@@ -546,17 +567,24 @@
           };
           firebase.initializeApp(firebaseConfig); window.firebaseDb = firebase.firestore();
 
-          // 💡 系統啟動第一步：向雲端請求桌位命名對照表
-          const configSnap = await window.firebaseDb.collection("system_settings").doc("tables_config").get();
-          if(configSnap.exists) {
-            globalTableConfig = configSnap.data().tables || [];
-          } else {
-            // 防呆：如果完全沒設定過，預設產生 1~8 桌的陣列
-            globalTableConfig = [1,2,3,4,5,6,7,8].map(i => ({id: String(i), name: `第 ${i} 桌`}));
-          }
+          // 💡 系統啟動第一步：即時監聽桌位命名對照表與桌況
+          window.firebaseDb.collection("system_settings").doc("tables_config").onSnapshot(configSnap => {
+            if(configSnap.exists) {
+              globalTableConfig = configSnap.data().tables || [];
+            } else {
+              globalTableConfig = [1,2,3,4,5,6,7,8].map(i => ({id: String(i), name: `第 ${i} 桌`}));
+            }
+            checkDiningSetup();
+          });
 
-          // 獲取設定後才進行桌號解析與渲染
-          loadMenuFromFirebase(); initCustomerInfo(); checkDiningSetup();
+          window.firebaseDb.collection("system_status").doc("tables").onSnapshot(tableSnap => {
+            if (tableSnap.exists) {
+              globalTablesStatus = tableSnap.data() || {};
+              updateHeaderTableBadge();
+            }
+          });
+
+          loadMenuFromFirebase(); initCustomerInfo();
           if (window.restoreActiveOrder) window.restoreActiveOrder();
 
           window.firebaseDb.collection("system_status").doc("today").onSnapshot((doc) => {
