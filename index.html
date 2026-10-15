@@ -341,7 +341,7 @@
         <p><strong>💡 顧客須知：</strong></p>
         <p id="modalStoreNotice" style="white-space: pre-line; color: #555; margin-top: 4px;">歡迎光臨！內用顧客請直接掃描桌號點餐，餐點現點現做請耐心等候。</p>
         <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #f0f0f0; text-align: center; color: #a0aec0; font-size: 11px;">
-          系統版本: v3.7 - 全域版本資訊常駐顯示
+          系統版本: v3.8 - 外帶電話必填與智慧記憶版
         </div>
       </div>
     </div>
@@ -357,7 +357,7 @@
     <!-- 菜單底部常駐版本與店名資訊 -->
     <div style="text-align: center; padding: 18px 16px 10px; color: #a0aec0; font-size: 12px;">
       <p id="footerStoreName" style="color: #718096; font-weight: 600;">劉家川味牛肉麵</p>
-      <p style="font-size: 11px; margin-top: 4px;">系統版本: v3.7 - 全域版本資訊常駐顯示</p>
+      <p style="font-size: 11px; margin-top: 4px;">系統版本: v3.8 - 外帶電話必填與智慧記憶版</p>
     </div>
   </div>
 
@@ -397,7 +397,7 @@
 
       <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #f0f0f0; text-align: center;">
         <p style="color: #718096; font-size: 13px;" id="dashboardStoreName">劉家川味牛肉麵</p>
-        <p style="color: #a0aec0; font-size: 11px; margin-top: 4px;">系統版本: v3.7 - 全域版本資訊常駐顯示</p>
+        <p style="color: #a0aec0; font-size: 11px; margin-top: 4px;">系統版本: v3.8 - 外帶電話必填與智慧記憶版</p>
       </div>
     </div>
   </div>
@@ -447,10 +447,11 @@
       </div>
 
       <!-- 外帶顧客必填資訊 -->
-      <div id="takeoutFields" style="display:none; background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:12px;">
-        <p style="font-size:13px; font-weight:bold; color:#1565c0; margin-bottom:8px;">🛍️ 外帶取餐聯絡資訊</p>
-        <input type="text" id="custName" class="input-field" placeholder="您的稱呼 (例：陳先生)">
-        <input type="tel" id="custPhone" class="input-field" placeholder="聯絡電話 (選填)">
+      <div id="takeoutFields" style="display:none; background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:12px; border:1px solid #e2e8f0;">
+        <p style="font-size:13px; font-weight:bold; color:#1565c0; margin-bottom:8px;">🛍️ 外帶取餐聯絡資訊 (必填，自動記憶免重填)</p>
+        <input type="text" id="custName" class="input-field" placeholder="您的稱呼 *必填 (例：陳先生)" oninput="document.getElementById('takeoutErrorMsg').style.display='none'">
+        <input type="tel" id="custPhone" class="input-field" style="margin-bottom:4px;" placeholder="聯絡手機號碼 *必填 (例：0912345678)" oninput="document.getElementById('takeoutErrorMsg').style.display='none'">
+        <p id="takeoutErrorMsg" style="display:none; color:#d32f2f; font-size:12px; font-weight:bold; margin-top:6px;">⚠️ 請完整填寫外帶「稱呼」與「聯絡電話」！</p>
       </div>
 
       <textarea id="orderNote" class="input-field" rows="2" placeholder="整單備註 (例如：餐具數量、統編等...)"></textarea>
@@ -735,7 +736,21 @@
 
     window.openCartModal = function() {
       renderCartItemsList();
-      document.getElementById("takeoutFields").style.display = currentCleanTableName ? "none" : "block";
+      const isTakeout = !currentCleanTableName;
+      document.getElementById("takeoutFields").style.display = isTakeout ? "block" : "none";
+      const errEl = document.getElementById("takeoutErrorMsg");
+      if (errEl) errEl.style.display = "none";
+
+      if (isTakeout) {
+        const nameInput = document.getElementById("custName");
+        const phoneInput = document.getElementById("custPhone");
+        if (!nameInput.value.trim()) {
+          nameInput.value = localStorage.getItem("liujia_cust_name") || "";
+        }
+        if (!phoneInput.value.trim()) {
+          phoneInput.value = localStorage.getItem("liujia_cust_phone") || "";
+        }
+      }
       document.getElementById("cartModal").style.display = "flex";
     };
 
@@ -773,15 +788,34 @@
       else renderCartItemsList();
     };
 
-    // 送出前檢查桌況 (方案 C 詢問加點或併桌)
+    // 送出前檢查桌況 (方案 C 詢問加點或併桌) 與外帶必填驗證
     window.handlePreSubmitOrder = function() {
       if (!cart.length) return;
       if (!currentCleanTableName) {
         const cname = document.getElementById("custName").value.trim();
+        const cphone = document.getElementById("custPhone").value.trim();
+        const errEl = document.getElementById("takeoutErrorMsg");
+
         if (!cname) {
+          if (errEl) {
+            errEl.innerText = "⚠️ 請填寫您的「稱呼」(例：陳先生)！";
+            errEl.style.display = "block";
+          }
           document.getElementById("custName").focus();
           return;
         }
+        if (!cphone) {
+          if (errEl) {
+            errEl.innerText = "⚠️ 外帶點餐請務必填寫「聯絡電話」，方便餐點完成時通知您！";
+            errEl.style.display = "block";
+          }
+          document.getElementById("custPhone").focus();
+          return;
+        }
+        // 自動記憶老顧客稱呼與電話至本機 localStorage
+        localStorage.setItem("liujia_cust_name", cname);
+        localStorage.setItem("liujia_cust_phone", cphone);
+
         submitOrderToFirebase("");
         return;
       }
@@ -1003,7 +1037,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;">
               <div>
                 <strong style="font-size:17px; color:var(--primary);">#${ord.queue_number}</strong>
-                <span style="font-size:13px; color:#555; margin-left:6px;">${ord.table_number}</span>
+                <span style="font-size:13px; color:#555; margin-left:6px;">${ord.table_number}${ord.customer_name ? ` (${ord.customer_name}${ord.customer_phone ? ' / ' + ord.customer_phone : ''})` : ''}</span>
                 ${isMine ? `<span style="font-size:11px; background:#edf2f7; color:#4a5568; padding:2px 6px; border-radius:4px; margin-left:4px;">本機點選</span>` : ''}
               </div>
               <div>${statusBadge}${paidBadge}</div>
