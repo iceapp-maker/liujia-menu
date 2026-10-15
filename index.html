@@ -340,6 +340,9 @@
         <hr style="margin: 12px 0; border: none; border-top: 1px dashed #ddd;">
         <p><strong>💡 顧客須知：</strong></p>
         <p id="modalStoreNotice" style="white-space: pre-line; color: #555; margin-top: 4px;">歡迎光臨！內用顧客請直接掃描桌號點餐，餐點現點現做請耐心等候。</p>
+        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #f0f0f0; text-align: center; color: #a0aec0; font-size: 11px;">
+          系統版本: v3.7 - 全域版本資訊常駐顯示
+        </div>
       </div>
     </div>
   </div>
@@ -350,6 +353,11 @@
     <div id="categoryTabs" class="tabs"></div>
     <div id="menuContainer" class="menu-container">
       <p style="text-align:center; color:#888; padding: 40px 0;">⏳ 正在從雲端載入最新菜單...</p>
+    </div>
+    <!-- 菜單底部常駐版本與店名資訊 -->
+    <div style="text-align: center; padding: 18px 16px 10px; color: #a0aec0; font-size: 12px;">
+      <p id="footerStoreName" style="color: #718096; font-weight: 600;">劉家川味牛肉麵</p>
+      <p style="font-size: 11px; margin-top: 4px;">系統版本: v3.7 - 全域版本資訊常駐顯示</p>
     </div>
   </div>
 
@@ -389,7 +397,7 @@
 
       <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #f0f0f0; text-align: center;">
         <p style="color: #718096; font-size: 13px;" id="dashboardStoreName">劉家川味牛肉麵</p>
-        <p style="color: #a0aec0; font-size: 11px; margin-top: 4px;">系統版本: v3.6 - 國定假日與自訂店休公告</p>
+        <p style="color: #a0aec0; font-size: 11px; margin-top: 4px;">系統版本: v3.7 - 全域版本資訊常駐顯示</p>
       </div>
     </div>
   </div>
@@ -1023,6 +1031,8 @@
           document.getElementById("headerStoreName").innerText = sName;
           document.getElementById("modalStoreName").innerText = sName;
           document.getElementById("dashboardStoreName").innerText = sName;
+          const footerStoreEl = document.getElementById("footerStoreName");
+          if (footerStoreEl) footerStoreEl.innerText = sName;
           document.getElementById("modalStoreAddress").innerText = storeSettings.store_address || "未設定地址";
           document.getElementById("modalStorePhone").innerText = storeSettings.store_phone || "未設定電話";
           document.getElementById("modalStoreHours").innerText = (storeSettings.hours || []).join(", ");
