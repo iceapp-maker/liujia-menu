@@ -450,7 +450,20 @@
   </div>
 <!-- [Section 3: HTML 共用元件與彈窗] End -->
 
-<!-- [Section 4: HTML 登入畫面] Start -->
+<!-- [Section 4: HTML 登入畫面與首次裝置綁定鎖] Start -->
+  <div id="deviceActivationOverlay" class="modal-overlay" style="display:none; background:#020617; z-index:2000;">
+    <div class="modal-box" style="max-width:400px; text-align:center; padding:32px 24px; background:#1e293b; color:#fff; border:1px solid #f59e0b;">
+      <div style="font-size:44px; margin-bottom:10px;">🛡️</div>
+      <h2 style="margin-bottom:8px; color:#f59e0b;">首次啟用系統・裝置綁定驗證</h2>
+      <p style="font-size:13px; color:#cbd5e1; line-height:1.6; margin-bottom:18px;">
+        此設備（平板/電腦）尚未經過系統商授權綁定。<br>請由系統建置人員輸入「首次裝置啟用授權碼」以解鎖本機後台權限。
+      </p>
+      <input type="password" id="deviceActivationInput" class="input-field" style="text-align:center; font-size:22px; letter-spacing:6px; background:#0f172a; color:#f59e0b; border-color:#475569;" placeholder="••••••">
+      <button class="btn" style="width:100%; padding:13px; font-size:16px; background:#f59e0b; color:#0f172a;" onclick="verifyDeviceActivation()">🔑 驗證並永久綁定此裝置</button>
+      <p style="font-size:11px; color:#94a3b8; margin-top:14px;">驗證通過後，此設備日常開機僅需輸入店家 4 位數密碼即可登入。</p>
+    </div>
+  </div>
+
   <div id="loginOverlay" class="modal-overlay" style="display:flex; background:#0f172a; z-index:1000;">
     <div class="modal-box" style="max-width:360px; text-align:center; padding:30px 24px;">
       <div style="font-size:40px; margin-bottom:10px;">🍜</div>
@@ -458,9 +471,10 @@
       <p style="font-size:13px; color:var(--sub); margin-bottom:18px;">請輸入日常管理密碼登入系統</p>
       <input type="password" id="pinInput" class="input-field" style="text-align:center; font-size:22px; letter-spacing:8px;" placeholder="••••">
       <button class="btn btn-primary" style="width:100%; padding:12px; font-size:16px;" onclick="verifyPin()">🔓 登入後台</button>
+      <div style="margin-top:12px; font-size:11px; color:#10b981; font-weight:bold;">✅ 本設備已通過系統商授權綁定</div>
     </div>
   </div>
-<!-- [Section 4: HTML 登入畫面] End -->
+<!-- [Section 4: HTML 登入畫面與首次裝置綁定鎖] End -->
 
 <!-- [Section 5: HTML 後台主介面與版面配置] Start -->
   <nav class="navbar">
@@ -537,9 +551,12 @@
   <div id="tab_menu" class="container" style="display:none;">
     <!-- 分類管理 -->
     <div class="settings-card">
-      <h3>📂 菜單分類管理</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:14px;">
+        <h3 style="border:none; padding:0; margin:0;">📂 菜單分類管理</h3>
+        <button class="btn" style="background:#4f46e5; color:#fff;" onclick="importDefaultMenuTemplate()">📥 一鍵載入公版範本菜單 (含冷飲類)</button>
+      </div>
       <div style="display:flex; gap:8px; margin-bottom:12px;">
-        <input type="text" id="newCatNameInput" class="input-field" style="margin:0; max-width:260px;" placeholder="輸入新分類名稱 (例：湯品類)">
+        <input type="text" id="newCatNameInput" class="input-field" style="margin:0; max-width:260px;" placeholder="輸入新分類名稱 (例：清涼冷飲)">
         <button class="btn btn-blue" onclick="addMenuCategory()">＋ 新增分類</button>
       </div>
       <div id="adminCategoriesList" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
@@ -732,9 +749,19 @@
       license_active: true,
       enable_printer: false,
       enable_pro_report: false,
-      enable_csv_clean: false
+      enable_csv_clean: false,
+      activation_pin: "888888",
+      device_epoch: 1
     };
     let currentReportDimension = "day"; // 'day' | 'week' | 'month'
+
+    // 台灣手機與市話號碼格式驗證器
+    function validateTaiwanPhone(rawPhone) {
+      const cleaned = String(rawPhone || "").replace(/[-\s()]/g, "");
+      const isMobile = /^09\d{8}$/.test(cleaned); // 台灣手機 09 開頭共 10 碼
+      const isLandline = /^\d{7}$/.test(cleaned) || /^0\d{8}$/.test(cleaned); // 市話 7 碼或含區碼 9 碼
+      return { valid: isMobile || isLandline, cleaned };
+    }
 
     // 語音提醒狀態
     let isVoiceAlertEnabled = localStorage.getItem("liujia_voice_alert") === "true";
@@ -810,24 +837,24 @@
 
 <!-- [Section 7: JS 登入與狀態管理] Start -->
     function initSystemListeners() {
-      const voiceChk = document.getElementById("voiceAlertCheckbox");
-      if (voiceChk) voiceChk.checked = isVoiceAlertEnabled;
-
-      // 1. 監聽後台密碼與遠端救援重置指令
+      // 1. 監聽店家後台日常登入密碼與總部遠端強制重置指令
       db.collection("system_settings").doc("admin").onSnapshot(doc => {
         if (doc.exists) {
           const data = doc.data();
           if (data.force_reset_pin) {
             cloudAdminPin = "1111";
             db.collection("system_settings").doc("admin").set({ pin: "1111", force_reset_pin: false }, { merge: true });
-            showToast("🔄 總部已將後台密碼重置為預設 1111");
+            showToast("🔄 系統服務商已將您的後台密碼重置為預設 1111");
           } else {
-            cloudAdminPin = data.pin || "1111";
+            cloudAdminPin = String(data.pin || "1111");
           }
+        } else {
+          db.collection("system_settings").doc("admin").set({ pin: "1111", force_reset_pin: false }, { merge: true });
+          cloudAdminPin = "1111";
         }
       });
 
-      // 2. 監聽總部 License 與三大進階付費開關
+      // 2. 監聽總部 License、三大進階付費開關與首次裝置綁定鎖
       db.collection("system_settings").doc("license").onSnapshot(doc => {
         if (doc.exists) {
           const d = doc.data();
@@ -835,6 +862,17 @@
           licenseFlags.enable_printer = !!d.enable_printer;
           licenseFlags.enable_pro_report = !!d.enable_pro_report;
           licenseFlags.enable_csv_clean = !!d.enable_csv_clean;
+          licenseFlags.activation_pin = String(d.activation_pin || "888888");
+          licenseFlags.device_epoch = Number(d.device_epoch || 1);
+
+          // 檢查本設備是否已完成首次系統商授權綁定
+          const savedEpoch = Number(localStorage.getItem("liujia_device_bound_epoch") || 0);
+          const actOverlay = document.getElementById("deviceActivationOverlay");
+          if (savedEpoch !== licenseFlags.device_epoch) {
+            actOverlay.style.display = "flex";
+          } else {
+            actOverlay.style.display = "none";
+          }
 
           const lockOverlay = document.getElementById("licenseLockOverlay");
           if (!licenseFlags.license_active) {
@@ -844,6 +882,12 @@
             lockOverlay.style.display = "none";
           }
           applyFeatureFlagsUI();
+        } else {
+          // 若尚未建立 license 文件，預設檢查本機是否綁定過 v1
+          const savedEpoch = Number(localStorage.getItem("liujia_device_bound_epoch") || 0);
+          if (savedEpoch !== 1) {
+            document.getElementById("deviceActivationOverlay").style.display = "flex";
+          }
         }
       });
 
@@ -875,17 +919,30 @@
     function applyFeatureFlagsUI() {
       const dimGroup = document.getElementById("proReportDimensionGroup");
       const csvGroup = document.getElementById("proCsvCleanGroup");
-      const limitNotice = document.getElementById("standardReportLimitNotice");
+      const stdNotice = document.getElementById("standardReportLimitNotice");
 
       if (dimGroup) dimGroup.style.display = licenseFlags.enable_pro_report ? "flex" : "none";
-      if (limitNotice) limitNotice.style.display = licenseFlags.enable_pro_report ? "none" : "block";
-      if (!licenseFlags.enable_pro_report) currentReportDimension = "day";
-
+      if (stdNotice) stdNotice.style.display = licenseFlags.enable_pro_report ? "none" : "block";
+      if (!licenseFlags.enable_pro_report) {
+        currentReportDimension = "day";
+      }
       if (csvGroup) csvGroup.style.display = licenseFlags.enable_csv_clean ? "flex" : "none";
 
       renderAllOrderSections();
       renderDailyReports();
     }
+
+    window.verifyDeviceActivation = function() {
+      const input = document.getElementById("deviceActivationInput").value.trim();
+      if (input === licenseFlags.activation_pin) {
+        localStorage.setItem("liujia_device_bound_epoch", String(licenseFlags.device_epoch));
+        document.getElementById("deviceActivationInput").value = "";
+        document.getElementById("deviceActivationOverlay").style.display = "none";
+        showToast("✅ 此裝置已成功永久綁定！請輸入日常密碼登入");
+      } else {
+        showToast("❌ 首次啟用授權碼錯誤！請洽系統建置商 (預設 888888)");
+      }
+    };
 
     window.verifyPin = function() {
       const input = document.getElementById("pinInput").value.trim();
@@ -1407,8 +1464,14 @@
 
       if (tableVal === "TAKEOUT") {
         custName = document.getElementById("posCustName").value.trim();
-        custPhone = document.getElementById("posCustPhone").value.trim();
-        if (!custName || !custPhone) return showToast("⚠️ 外帶單請務必填寫顧客稱呼與聯絡電話！");
+        const rawPhone = document.getElementById("posCustPhone").value.trim();
+        if (!custName || !rawPhone) return showToast("⚠️ 外帶單請務必填寫顧客稱呼與聯絡電話！");
+        const phoneCheck = validateTaiwanPhone(rawPhone);
+        if (!phoneCheck.valid) {
+          document.getElementById("posCustPhone").focus();
+          return showToast("📞 電話格式不正確！請輸入手機10碼(09開頭)或市話7/9碼");
+        }
+        custPhone = phoneCheck.cleaned;
       } else {
         finalTableStr = `內用 - ${tableVal}`;
       }
@@ -1634,6 +1697,62 @@
         if (!yes) return;
         await db.collection("menu_categories").doc(catId).delete();
         showToast("🗑️ 分類已刪除");
+      });
+    };
+
+    // 任務 2：新店一鍵載入公版範本菜單 (含冷飲類)
+    window.importDefaultMenuTemplate = function() {
+      openConfirm("確定要載入「公版預設菜單（含麵類、飯類、水餃、湯品小菜、清涼冷飲）」嗎？\n這會自動補齊 5 大分類與 16 道經典餐點，不會影響現有訂單。", async (yes) => {
+        if (!yes) return;
+        const templateCats = [
+          { name: "招牌麵類", sort_order: 1, is_active: true },
+          { name: "飯類/炒飯", sort_order: 2, is_active: true },
+          { name: "手工水餃", sort_order: 3, is_active: true },
+          { name: "湯品/小菜", sort_order: 4, is_active: true },
+          { name: "清涼冷飲", sort_order: 5, is_active: true }
+        ];
+        const noodleAddons = [{ name: "加麵 (+15元)", price: 15 }, { name: "不要蔥", price: 0 }, { name: "不要酸菜", price: 0 }, { name: "小辣", price: 0 }];
+        const riceAddons = [{ name: "加飯 (+10元)", price: 10 }, { name: "不要蔥", price: 0 }, { name: "加辣", price: 0 }];
+        const drinkAddons = [{ name: "去冰", price: 0 }, { name: "正常冰", price: 0 }];
+
+        const templateItems = [
+          { category_name: "招牌麵類", name: "川味紅燒牛肉麵", type: "size", price_small: 110, price_large: 130, addons: noodleAddons, is_available: true },
+          { category_name: "招牌麵類", name: "牛肉乾拌麵", type: "size", price_small: 100, price_large: 120, addons: noodleAddons, is_available: true },
+          { category_name: "招牌麵類", name: "牛肉湯麵", type: "size", price_small: 70, price_large: 85, addons: noodleAddons, is_available: true },
+          { category_name: "招牌麵類", name: "古早味陽春乾麵", type: "size", price_small: 45, price_large: 60, addons: noodleAddons, is_available: true },
+          { category_name: "招牌麵類", name: "香濃麻醬乾麵", type: "size", price_small: 50, price_large: 65, addons: noodleAddons, is_available: true },
+          { category_name: "飯類/炒飯", name: "黃金肉絲蛋炒飯", type: "fixed", price: 75, addons: riceAddons, is_available: true },
+          { category_name: "飯類/炒飯", name: "沙茶牛肉炒飯", type: "fixed", price: 95, addons: riceAddons, is_available: true },
+          { category_name: "飯類/炒飯", name: "傳統滷肉燥飯", type: "size", price_small: 35, price_large: 50, addons: [{ name: "加滷蛋 (+15元)", price: 15 }], is_available: true },
+          { category_name: "手工水餃", name: "高麗菜鮮肉水餃", type: "dumpling", price: 6, min_qty: 10, addons: [{ name: "加蒜泥", price: 0 }, { name: "加辣油", price: 0 }], is_available: true },
+          { category_name: "手工水餃", name: "韭菜鮮肉水餃", type: "dumpling", price: 6, min_qty: 10, addons: [{ name: "加蒜泥", price: 0 }, { name: "加辣油", price: 0 }], is_available: true },
+          { category_name: "湯品/小菜", name: "紅燒牛肉湯", type: "size", price_small: 80, price_large: 100, addons: [{ name: "不要蔥", price: 0 }], is_available: true },
+          { category_name: "湯品/小菜", name: "鮮肉餛飩湯", type: "fixed", price: 45, addons: [{ name: "不要蔥", price: 0 }], is_available: true },
+          { category_name: "湯品/小菜", name: "綜合滷味拼盤 (豆干/海帶/滷蛋)", type: "fixed", price: 60, addons: [{ name: "加辣", price: 0 }, { name: "不要蔥", price: 0 }], is_available: true },
+          { category_name: "清涼冷飲", name: "古早味冰紅茶", type: "fixed", price: 25, addons: drinkAddons, is_available: true },
+          { category_name: "清涼冷飲", name: "手工熬煮冬瓜茶", type: "fixed", price: 25, addons: drinkAddons, is_available: true },
+          { category_name: "清涼冷飲", name: "高山無糖冷泡綠茶", type: "fixed", price: 30, addons: drinkAddons, is_available: true },
+          { category_name: "清涼冷飲", name: "烏梅酸梅湯", type: "fixed", price: 35, addons: drinkAddons, is_available: true },
+          { category_name: "清涼冷飲", name: "可口可樂 / 雪碧 (罐裝)", type: "fixed", price: 30, addons: [{ name: "可樂", price: 0 }, { name: "雪碧", price: 0 }], is_available: true }
+        ];
+
+        try {
+          const batch = db.batch();
+          templateCats.forEach(c => {
+            if (!adminCategories.some(ec => ec.name === c.name)) {
+              batch.set(db.collection("menu_categories").doc(), c);
+            }
+          });
+          templateItems.forEach(it => {
+            if (!adminMenuItems.some(ei => ei.name === it.name)) {
+              batch.set(db.collection("menu_items").doc(), it);
+            }
+          });
+          await batch.commit();
+          showToast("🎉 公版範本菜單 (含清涼冷飲) 已成功匯入！");
+        } catch (e) {
+          showToast("匯入失敗，請檢查網路");
+        }
       });
     };
 
