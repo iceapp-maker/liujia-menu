@@ -460,7 +460,7 @@
       <div id="takeoutFields" style="display:none; background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:12px; border:1px solid #e2e8f0;">
         <p style="font-size:13px; font-weight:bold; color:#1565c0; margin-bottom:8px;">🛍️ 外帶取餐聯絡資訊 (必填，自動記憶免重填)</p>
         <input type="text" id="custName" class="input-field" placeholder="您的稱呼 *必填 (例：陳先生)" oninput="document.getElementById('takeoutErrorMsg').style.display='none'">
-        <input type="tel" id="custPhone" class="input-field" style="margin-bottom:4px;" placeholder="聯絡手機號碼 *必填 (例：0912345678)" oninput="document.getElementById('takeoutErrorMsg').style.display='none'">
+        <input type="tel" id="custPhone" class="input-field" style="margin-bottom:4px;" placeholder="手機(10碼) 或 市話(7/9碼) *必填" oninput="document.getElementById('takeoutErrorMsg').style.display='none'">
         <p id="takeoutErrorMsg" style="display:none; color:#d32f2f; font-size:12px; font-weight:bold; margin-top:6px;">⚠️ 請完整填寫外帶「稱呼」與「聯絡電話」！</p>
       </div>
 
@@ -530,6 +530,14 @@
     // 本機點過的訂單 ID 紀錄 (localStorage)
     let myLocalOrderIds = JSON.parse(localStorage.getItem("liujia_my_orders") || "[]");
     let activeTableOrders = []; // 當前顯示於儀表板的訂單陣列
+
+    // 台灣手機與市話格式檢查器
+    function validateTaiwanPhone(rawPhone) {
+      const cleaned = String(rawPhone || "").replace(/[-\s()]/g, "");
+      const isMobile = /^09\d{8}$/.test(cleaned); // 09開頭共 10 碼
+      const isLandline = /^\d{7}$/.test(cleaned) || /^0\d{8}$/.test(cleaned); // 7碼或含區碼9碼
+      return { valid: isMobile || isLandline, cleaned };
+    }
 
     // URL 參數自動洗淨防呆解析
     function parseUrlTableParam() {
@@ -822,9 +830,19 @@
           document.getElementById("custPhone").focus();
           return;
         }
+        const phoneCheck = validateTaiwanPhone(cphone);
+        if (!phoneCheck.valid) {
+          if (errEl) {
+            errEl.innerText = "📞 電話格式不正確！請輸入台灣手機 10 碼 (09開頭) 或市話 7/9 碼數字。";
+            errEl.style.display = "block";
+          }
+          document.getElementById("custPhone").focus();
+          return;
+        }
+        document.getElementById("custPhone").value = phoneCheck.cleaned;
         // 自動記憶老顧客稱呼與電話至本機 localStorage
         localStorage.setItem("liujia_cust_name", cname);
-        localStorage.setItem("liujia_cust_phone", cphone);
+        localStorage.setItem("liujia_cust_phone", phoneCheck.cleaned);
 
         submitOrderToFirebase("");
         return;
@@ -1169,4 +1187,6 @@
 
     window.addEventListener("DOMContentLoaded", initRealtimeListeners);
   </script>
+</body>
+</html>
 <!-- [Section 10: JS Firebase 監聽與還原] End -->
