@@ -504,42 +504,42 @@
   <!-- 分頁 3：營運報表與熱銷排行 -->
   <div id="tab_reports" class="container" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
-      <h2 style="font-size:19px; font-weight:800;">📊 營運報表與熱銷排行</h2>
-
-      <!-- 進階 B & C 專屬工具列 (由總部 Feature Flags 自動控制顯示) -->
+      <div>
+        <h2 style="font-size:18px; font-weight:800;">📊 營運報表與熱銷排行</h2>
+        <p id="standardReportLimitNotice" style="font-size:12px; color:#d97706; margin-top:4px;">
+          💡 目前為【標準版】：僅顯示「今日 ＋ 過去 5 日內」之營收數據。如需完整週/月報表或匯出 Excel，請洽系統商升級。
+        </p>
+      </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-        <div id="proReportDimensionGroup" style="display:none; background:#e2e8f0; padding:4px; border-radius:10px; gap:4px;">
-          <button id="dimBtn_day" class="btn btn-primary" style="padding:6px 12px; font-size:13px;" onclick="setReportDimension('day')">📅 日報表</button>
-          <button id="dimBtn_week" class="btn btn-gray" style="padding:6px 12px; font-size:13px;" onclick="setReportDimension('week')">📆 週報表</button>
-          <button id="dimBtn_month" class="btn btn-gray" style="padding:6px 12px; font-size:13px;" onclick="setReportDimension('month')">🗓️ 月報表</button>
+        <!-- 進階 B：日/週/月維度切換 -->
+        <div id="proReportDimensionGroup" style="display:none; gap:6px;">
+          <button id="dimBtn_day" class="btn btn-primary" onclick="setReportDimension('day')">📅 日報表</button>
+          <button id="dimBtn_week" class="btn btn-gray" onclick="setReportDimension('week')">📆 週報表</button>
+          <button id="dimBtn_month" class="btn btn-gray" onclick="setReportDimension('month')">🗓️ 月報表</button>
         </div>
+        <!-- 進階 C：匯出 CSV 與清理舊單 -->
         <div id="proCsvCleanGroup" style="display:none; gap:8px;">
           <button class="btn btn-green" onclick="exportOrdersToCSV()">📥 匯出 Excel (CSV)</button>
           <button class="btn btn-danger-outline" onclick="cleanOldCloudOrders()">🧹 清理 30 天前舊單</button>
         </div>
       </div>
     </div>
-
     <div id="dailyReportsContainer"></div>
-    <div id="standardReportLimitNotice" style="margin-top:16px; padding:16px; background:#fffbeb; border:1px solid #fde68a; border-radius:12px; color:#92400e; font-size:13px; text-align:center;">
-      🔒 <strong>標準版目前顯示「今日 ＋ 過去 5 日（不含今日）」之每日營運狀況。</strong><br>
-      如需解鎖無限期歷史查詢、週/月彙整報表或 Excel 帳務匯出功能，請聯繫系統服務商開通進階模組。
-    </div>
   </div>
 
   <!-- 分頁 4：菜單管理 -->
   <div id="tab_menu" class="container" style="display:none;">
+    <!-- 分類管理 -->
     <div class="settings-card">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-        <h3 style="margin:0; border:none; padding:0;">📂 菜單分類管理</h3>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="newCatNameInput" class="input-field" style="margin:0; width:180px;" placeholder="新分類名稱 (例：湯類)">
-          <button class="btn btn-blue" onclick="addMenuCategory()">➕ 新增分類</button>
-        </div>
+      <h3>📂 菜單分類管理</h3>
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <input type="text" id="newCatNameInput" class="input-field" style="margin:0; max-width:260px;" placeholder="輸入新分類名稱 (例：湯品類)">
+        <button class="btn btn-blue" onclick="addMenuCategory()">＋ 新增分類</button>
       </div>
       <div id="adminCategoriesList" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
     </div>
 
+    <!-- 餐點品項管理 -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
       <h3 style="font-size:18px; font-weight:800;">🍱 餐點品項管理 (新增 / 改價 / 售完開關)</h3>
       <button class="btn btn-green" onclick="openMenuEditModal(null)">➕ 新增餐點品項</button>
@@ -547,115 +547,151 @@
     <div id="adminMenuContainer"></div>
   </div>
 
-  <!-- 分頁 5：設定 -->
+  <!-- 分頁 5：設定 (三欄式直覺排版) -->
   <div id="tab_settings" class="container" style="display:none;">
-    <!-- 區塊 A：店家基本資訊與營業時間 -->
-    <div class="settings-card">
-      <h3>🏪 店家基本資訊與營業時段</h3>
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
-        <div>
-          <label style="font-size:13px; font-weight:bold;">店家名稱</label>
-          <input type="text" id="setStoreName" class="input-field">
-        </div>
-        <div>
-          <label style="font-size:13px; font-weight:bold;">聯絡電話</label>
-          <input type="text" id="setStorePhone" class="input-field">
-        </div>
-        <div>
-          <label style="font-size:13px; font-weight:bold;">營業地址</label>
-          <input type="text" id="setStoreAddress" class="input-field">
-        </div>
-        <div>
-          <label style="font-size:13px; font-weight:bold;">每日營業時段 (多時段請用逗號分隔)</label>
-          <input type="text" id="setStoreHours" class="input-field" placeholder="11:00-14:00, 17:00-20:30">
-        </div>
-      </div>
-      <label style="font-size:13px; font-weight:bold;">顧客須知公告</label>
-      <textarea id="setStoreNotice" class="input-field" rows="2"></textarea>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px; align-items:start;">
+      
+      <!-- 左欄：基本店家資訊 + 修改密碼 + 語音提醒 -->
+      <div class="settings-card" style="margin-bottom:0;">
+        <h3>🏪 基本店家資訊與安全性</h3>
+        <label style="font-size:12px; font-weight:bold; color:#475569;">店家名稱</label>
+        <input type="text" id="setStoreName" class="input-field" placeholder="例：大飯桶小吃">
 
-      <div style="margin-top:8px; margin-bottom:14px;">
-        <label style="font-size:13px; font-weight:bold; display:block; margin-bottom:6px;">📅 每週固定公休日 (勾選之星期幾將自動攔截點餐)</label>
-        <div id="closedDaysCheckboxes" style="display:flex; gap:12px; flex-wrap:wrap; font-size:14px;">
-          <label><input type="checkbox" value="1"> 週一</label>
-          <label><input type="checkbox" value="2"> 週二</label>
-          <label><input type="checkbox" value="3"> 週三</label>
-          <label><input type="checkbox" value="4"> 週四</label>
-          <label><input type="checkbox" value="5"> 週五</label>
-          <label><input type="checkbox" value="6"> 週六</label>
-          <label><input type="checkbox" value="0"> 週日</label>
-        </div>
-      </div>
+        <label style="font-size:12px; font-weight:bold; color:#475569;">聯絡電話</label>
+        <input type="text" id="setStorePhone" class="input-field" placeholder="例：06-4445555">
 
-      <!-- 臨時店休開關 -->
-      <div style="background:#fff1f2; border:1px solid #fecdd3; padding:14px; border-radius:12px; margin-bottom:14px;">
-        <label style="display:flex; align-items:center; gap:8px; font-weight:800; color:#be123c; cursor:pointer; margin-bottom:8px;">
-          <input type="checkbox" id="setManualClose" style="width:18px; height:18px;">
-          🛑 立即開啟「臨時店休 / 提早售完」攔截遮罩
-        </label>
-        <input type="text" id="setCloseTitle" class="input-field" placeholder="遮罩標題 (例：🛑 今日餐點已提早售完)">
-        <input type="text" id="setCloseReason" class="input-field" style="margin-bottom:0;" placeholder="遮罩說明文字...">
-      </div>
+        <label style="font-size:12px; font-weight:bold; color:#475569;">店家地址</label>
+        <input type="text" id="setStoreAddress" class="input-field" placeholder="例：台南永光街2號">
 
-      <button class="btn btn-primary" onclick="saveStoreInfoSettings()">💾 儲存店家基本與營業設定</button>
-    </div>
+        <label style="font-size:12px; font-weight:bold; color:#475569;">顧客須知 / 營業說明</label>
+        <textarea id="setStoreNotice" class="input-field" rows="3" placeholder="輸入顯示於前台的注意事項..."></textarea>
 
-    <!-- 區塊 B：特定國定假日 / 特休預排 -->
-    <div class="settings-card">
-      <h3>🎉 國定假日 / 特休日期預排</h3>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-        <input type="date" id="newHolidayDate" class="input-field" style="width:auto; margin:0;">
-        <input type="text" id="newHolidayNote" class="input-field" style="flex:1; min-width:200px; margin:0;" placeholder="公休說明 (例：中秋節公休一天)">
-        <button class="btn btn-blue" onclick="addSpecialHoliday()">➕ 新增預排公休</button>
-      </div>
-      <div id="specialHolidaysList"></div>
-    </div>
+        <button class="btn btn-blue" style="width:100%; margin-bottom:20px;" onclick="saveStoreInfoSettings()">💾 儲存店家基本資訊</button>
 
-    <!-- 區塊 C：內用桌位管理 & 專屬 QR Code 產生器 -->
-    <div class="settings-card">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-        <h3 style="margin:0; border:none; padding:0;">🪑 內用桌位設定 & 專屬 QR Code</h3>
-        <button class="btn btn-blue" onclick="openQrGeneratorModal()">🖨️ 一鍵產生與預覽列印全店 QR Code</button>
-      </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
-        <input type="text" id="newTableIdInput" class="input-field" style="width:140px; margin:0;" placeholder="參數ID (可留白)">
-        <input type="text" id="newTableNameInput" class="input-field" style="width:200px; margin:0;" placeholder="桌位名稱 (例：第 9 桌)">
-        <button class="btn btn-green" onclick="addNewTableConfig()">➕ 新增桌位</button>
-      </div>
-      <div id="tablesConfigList" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
-    </div>
+        <hr style="border:none; border-top:1px dashed var(--border); margin:16px 0;">
 
-    <!-- 區塊 D：語音播報提醒 & 修改後台登入密碼 (需驗證舊密碼) -->
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
-      <div class="settings-card">
-        <h3>🔊 現場新訂單語音提醒</h3>
-        <p style="font-size:13px; color:var(--sub); margin-bottom:14px; line-height:1.5;">
-          開啟後，當有顧客送出新訂單時，平板或電腦會自動發出人聲播報：<strong>「叮咚，有新訂單請注意」</strong>。
+        <h4 style="font-size:15px; font-weight:800; margin-bottom:12px; color:#0f172a;">🔑 修改日常後台登入密碼 (需驗證舊密碼)</h4>
+        <label style="font-size:12px; font-weight:bold; color:#475569;">目前舊密碼 *</label>
+        <input type="password" id="oldPinInput" class="input-field" placeholder="請先輸入目前的後台密碼">
+
+        <label style="font-size:12px; font-weight:bold; color:#475569;">新後台密碼 (4~8 位數) *</label>
+        <input type="password" id="newPinInput" class="input-field" placeholder="輸入新的 4~8 位數密碼">
+
+        <label style="font-size:12px; font-weight:bold; color:#475569;">再次確認新密碼 *</label>
+        <input type="password" id="confirmNewPinInput" class="input-field" placeholder="請再次輸入新密碼以防打錯">
+
+        <button class="btn btn-green" style="width:100%; margin-bottom:20px;" onclick="changeAdminPin()">🔑 驗證並更新後台密碼</button>
+
+        <hr style="border:none; border-top:1px dashed var(--border); margin:16px 0;">
+
+        <h4 style="font-size:15px; font-weight:800; margin-bottom:8px; color:#0f172a;">🔊 現場新訂單語音提醒</h4>
+        <p style="font-size:12px; color:var(--sub); margin-bottom:10px; line-height:1.5;">
+          開啟後，收到新訂單時自動以中文人聲播報：「叮咚，有新訂單請注意」。
         </p>
-        <label style="display:flex; align-items:center; gap:10px; font-size:15px; font-weight:800; cursor:pointer; background:#f8fafc; padding:14px; border-radius:12px; border:1px solid var(--border);">
-          <input type="checkbox" id="voiceAlertCheckbox" style="width:22px; height:22px;" onchange="toggleVoiceAlert(this.checked)">
+        <label style="display:flex; align-items:center; gap:10px; font-size:14px; font-weight:800; cursor:pointer; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid var(--border);">
+          <input type="checkbox" id="voiceAlertCheckbox" style="width:20px; height:20px;" onchange="toggleVoiceAlert(this.checked)">
           允許語音播報新訂單提醒
         </label>
       </div>
 
-      <div class="settings-card">
-        <h3>🔑 修改日常後台登入密碼</h3>
-        <label style="font-size:12px; font-weight:bold;">1. 請輸入目前舊密碼 *</label>
-        <input type="password" id="oldPinInput" class="input-field" placeholder="驗證目前密碼">
-        <label style="font-size:12px; font-weight:bold;">2. 請輸入新密碼 (4~8位) *</label>
-        <input type="password" id="newPinInput" class="input-field" placeholder="輸入新密碼">
-        <label style="font-size:12px; font-weight:bold;">3. 再次確認新密碼 *</label>
-        <input type="password" id="confirmNewPinInput" class="input-field" placeholder="再次輸入新密碼">
-        <button class="btn btn-primary" style="width:100%;" onclick="changeAdminPin()">💾 驗證並更新密碼</button>
+      <!-- 中欄：營業時間與店休公告 -->
+      <div class="settings-card" style="margin-bottom:0;">
+        <h3>⏰ 營業時間與店休公告</h3>
+
+        <!-- 立即暫停營業開關卡片 -->
+        <div style="background:#fff1f2; border:1px solid #fecdd3; padding:14px; border-radius:12px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong style="color:#be123c; font-size:14px;">🛑 立即暫停營業開關</strong>
+            <input type="checkbox" id="setManualClose" style="width:20px; height:20px; cursor:pointer;" onchange="saveStoreInfoSettings()">
+          </div>
+          <div style="font-size:12px; color:#be123c; font-weight:bold; margin-bottom:6px;">前台顯示標題 (可點選快速帶入)：</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+            <button type="button" class="btn btn-gray" style="padding:4px 8px; font-size:12px; background:#fff; border:1px solid #fecdd3;" onclick="fillClosePreset('🎉 國定假日公休', '適逢國定假日，本店今日公休一天，祝您佳節愉快！')">🎉 國定假日</button>
+            <button type="button" class="btn btn-gray" style="padding:4px 8px; font-size:12px; background:#fff; border:1px solid #fecdd3;" onclick="fillClosePreset('🙇‍♂️ 今日餐點已提早售完', '感謝大家支持！今日準備之食材已全數售完，我們明日見！')">🙇‍♂️ 提早售完</button>
+            <button type="button" class="btn btn-gray" style="padding:4px 8px; font-size:12px; background:#fff; border:1px solid #fecdd3;" onclick="fillClosePreset('🛑 臨時店休公告', '本店今日因故臨時店休一天，造成不便敬請見諒！')">🛑 臨時店休</button>
+            <button type="button" class="btn btn-gray" style="padding:4px 8px; font-size:12px; background:#fff; border:1px solid #fecdd3;" onclick="fillClosePreset('✈️ 連假出遊公休', '本店目前連假公休中，期待回來繼續為您服務！')">✈️ 連假出遊</button>
+          </div>
+          <input type="text" id="setCloseTitle" class="input-field" style="background:#fff; margin-bottom:8px;" placeholder="遮罩標題 (例：🎉 國定假日公休)">
+          <textarea id="setCloseReason" class="input-field" rows="2" style="background:#fff; margin-bottom:10px;" placeholder="遮罩說明文字..."></textarea>
+          <button class="btn btn-primary" style="width:100%; background:#e11d48;" onclick="saveStoreInfoSettings()">💾 更新店休公告文字</button>
+        </div>
+
+        <!-- 預排特定公休日期 -->
+        <div style="background:#f8fafc; border:1px solid var(--border); padding:14px; border-radius:12px; margin-bottom:16px;">
+          <div style="font-size:13px; font-weight:800; color:#1e293b; margin-bottom:8px;">📅 預排特定公休日期 (國定假日自動攔截)</div>
+          <div style="display:flex; gap:6px; margin-bottom:8px;">
+            <input type="date" id="newHolidayDate" class="input-field" style="margin:0; flex:1;">
+            <input type="text" id="newHolidayNote" class="input-field" style="margin:0; flex:1.2;" placeholder="假日名稱(例:中秋節公休)">
+          </div>
+          <button class="btn btn-blue" style="padding:6px 14px; font-size:13px; margin-bottom:10px;" onclick="addSpecialHoliday()">＋ 預排</button>
+          <div id="specialHolidaysList"></div>
+        </div>
+
+        <!-- 每週固定公休日 -->
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px; font-weight:800; display:block; margin-bottom:8px;">每週固定公休日</label>
+          <div id="closedDaysCheckboxes" style="display:flex; gap:10px; flex-wrap:wrap; font-size:13px;">
+            <label><input type="checkbox" value="1"> 週一</label>
+            <label><input type="checkbox" value="2"> 週二</label>
+            <label><input type="checkbox" value="3"> 週三</label>
+            <label><input type="checkbox" value="4"> 週四</label>
+            <label><input type="checkbox" value="5"> 週五</label>
+            <label><input type="checkbox" value="6"> 週六</label>
+            <label><input type="checkbox" value="0"> 週日</label>
+          </div>
+        </div>
+
+        <!-- 兩段營業時間選擇器 -->
+        <label style="font-size:12px; font-weight:bold; color:#475569;">第一段營業時間</label>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+          <input type="time" id="hoursStart1" class="input-field" style="margin:0;" value="11:00">
+          <span>至</span>
+          <input type="time" id="hoursEnd1" class="input-field" style="margin:0;" value="14:00">
+        </div>
+
+        <label style="font-size:12px; font-weight:bold; color:#475569;">第二段營業時間 (若全天一段可留空)</label>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+          <input type="time" id="hoursStart2" class="input-field" style="margin:0;" value="17:00">
+          <span>至</span>
+          <input type="time" id="hoursEnd2" class="input-field" style="margin:0;" value="20:30">
+        </div>
+        <!-- 保留隱藏相容欄位 -->
+        <input type="hidden" id="setStoreHours">
+
+        <button class="btn btn-green" style="width:100%;" onclick="saveStoreInfoSettings()">💾 儲存營業時間設定</button>
       </div>
+
+      <!-- 右欄：內用桌位對應管理 + 一鍵產生全店 QR Code -->
+      <div class="settings-card" style="margin-bottom:0;">
+        <h3>🪑 內用桌位對應管理</h3>
+
+        <!-- 醒目的一鍵產生全店 QR Code 區塊 -->
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:12px; border-radius:12px; margin-bottom:14px;">
+          <div style="font-size:13px; font-weight:800; color:#1e40af; margin-bottom:4px;">🖨️ 專屬桌位 QR Code 產生器</div>
+          <p style="font-size:12px; color:#3b82f6; margin-bottom:8px;">自動依據下方桌位與外帶產生 A4 網格排版，可直接列印張貼。</p>
+          <button class="btn btn-blue" style="width:100%; background:#1d4ed8;" onclick="openQrGeneratorModal()">
+            🖨️ 一鍵產生與預覽列印全店 QR Code
+          </button>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-bottom:12px;">
+          <input type="text" id="newTableIdInput" class="input-field" style="width:95px; margin:0; font-size:13px;" placeholder="網址ID(留白)">
+          <input type="text" id="newTableNameInput" class="input-field" style="flex:1; margin:0; font-size:13px;" placeholder="顯示桌名(例:二樓包廂)">
+          <button class="btn btn-blue" style="padding:8px 12px; white-space:nowrap;" onclick="addNewTableConfig()">＋新增</button>
+        </div>
+
+        <div id="tablesConfigList" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;"></div>
+      </div>
+
     </div>
 
     <!-- 區塊 E：每日營業歸零與清桌 (安全收納於設定頁最底部) -->
-    <div style="margin-top: 10px; background: #fff1f2; border: 1px solid #fecdd3; padding: 20px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+    <div style="margin-top: 22px; background: #fff1f2; border: 1px solid #fecdd3; padding: 20px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
       <div>
-        <h4 style="color: #be123c; font-size: 16px; margin-bottom: 4px;">⚠️ 每日號碼歸零與全店清桌</h4>
-        <p style="font-size: 13px; color: #9f1239;">打烊或開市前點擊：將今日取餐號碼重置回 100 號，並將所有內用桌位釋放為「空閒 (idle)」。</p>
+        <h4 style="color: #be123c; font-size: 16px; margin-bottom: 4px;">🔄 每日營業號碼歸零與全桌位清空</h4>
+        <p style="font-size: 13px; color: #9f1239;">請於每日開店前或打烊後點擊。這將會把取號機重置為 #100 號（下一單從 #101 開始），並將所有內用桌位恢復為「空閒」狀態。</p>
       </div>
-      <button class="btn btn-primary" style="background:#e11d48;" onclick="triggerDailyReset()">🔄 執行每日歸零與清桌</button>
+      <button class="btn btn-primary" style="background:#e11d48;" onclick="triggerDailyReset()">🔄 執行每日號碼歸零與清桌</button>
     </div>
   </div>
 <!-- [Section 5: HTML 後台主介面與版面配置] End -->
@@ -1725,11 +1761,33 @@
     };
 
     // 店務設定與國定假日管理
+    window.fillClosePreset = function(title, reason) {
+      document.getElementById("setCloseTitle").value = title;
+      document.getElementById("setCloseReason").value = reason;
+    };
+
     function populateStoreSettingsForm() {
       document.getElementById("setStoreName").value = storeInfoData.store_name || "";
       document.getElementById("setStorePhone").value = storeInfoData.store_phone || "";
       document.getElementById("setStoreAddress").value = storeInfoData.store_address || "";
-      document.getElementById("setStoreHours").value = (storeInfoData.hours || []).join(", ");
+      const hoursArr = storeInfoData.hours || ["11:00-14:00", "17:00-20:30"];
+      document.getElementById("setStoreHours").value = hoursArr.join(", ");
+
+      // 同步填入第一段與第二段時間選擇器
+      if (hoursArr[0] && hoursArr[0].includes("-")) {
+        const [s1, e1] = hoursArr[0].split("-");
+        document.getElementById("hoursStart1").value = s1.trim();
+        document.getElementById("hoursEnd1").value = e1.trim();
+      }
+      if (hoursArr[1] && hoursArr[1].includes("-")) {
+        const [s2, e2] = hoursArr[1].split("-");
+        document.getElementById("hoursStart2").value = s2.trim();
+        document.getElementById("hoursEnd2").value = e2.trim();
+      } else {
+        document.getElementById("hoursStart2").value = "";
+        document.getElementById("hoursEnd2").value = "";
+      }
+
       document.getElementById("setStoreNotice").value = storeInfoData.store_notice || "";
       document.getElementById("setManualClose").checked = !!storeInfoData.manual_close;
       document.getElementById("setCloseTitle").value = storeInfoData.close_title || "";
@@ -1744,8 +1802,14 @@
     }
 
     window.saveStoreInfoSettings = async function() {
-      const hoursStr = document.getElementById("setStoreHours").value;
-      const hours = hoursStr.split(",").map(s => s.trim()).filter(Boolean);
+      const s1 = document.getElementById("hoursStart1")?.value;
+      const e1 = document.getElementById("hoursEnd1")?.value;
+      const s2 = document.getElementById("hoursStart2")?.value;
+      const e2 = document.getElementById("hoursEnd2")?.value;
+      const hours = [];
+      if (s1 && e1) hours.push(`${s1}-${e1}`);
+      if (s2 && e2) hours.push(`${s2}-${e2}`);
+
       const closed_days = [];
       document.querySelectorAll("#closedDaysCheckboxes input[type='checkbox']:checked").forEach(chk => {
         closed_days.push(Number(chk.value));
@@ -1755,7 +1819,7 @@
         store_name: document.getElementById("setStoreName").value.trim(),
         store_phone: document.getElementById("setStorePhone").value.trim(),
         store_address: document.getElementById("setStoreAddress").value.trim(),
-        hours,
+        hours: hours.length ? hours : ["11:00-14:00"],
         store_notice: document.getElementById("setStoreNotice").value.trim(),
         closed_days,
         manual_close: document.getElementById("setManualClose").checked,
@@ -1770,12 +1834,12 @@
       if (!el) return;
       const list = storeInfoData.special_holidays || [];
       if (!list.length) {
-        el.innerHTML = `<span style="font-size:13px; color:var(--sub);">目前無預排之國定假日或特休</span>`;
+        el.innerHTML = `<span style="font-size:12px; color:var(--sub);">目前無預排之國定假日或特定店休</span>`;
         return;
       }
       el.innerHTML = list.map((h, idx) => `
-        <div style="display:inline-flex; align-items:center; gap:8px; background:#fffbeb; border:1px solid #fde68a; padding:6px 12px; border-radius:8px; margin-right:8px; margin-bottom:8px; font-size:13px;">
-          <strong>📅 ${h.date}</strong> <span>${h.note || ''}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#fffbeb; border:1px solid #fde68a; padding:6px 10px; border-radius:8px; margin-bottom:6px; font-size:12px;">
+          <span><strong>📅 ${h.date}</strong> ${h.note || ''}</span>
           <button class="btn btn-danger-outline" style="padding:2px 6px; font-size:11px;" onclick="removeSpecialHoliday(${idx})">✕</button>
         </div>
       `).join('');
@@ -1799,14 +1863,16 @@
       showToast("🗑️ 已移除該預排公休");
     };
 
-    // 內用桌位管理
+    // 內用桌位管理 (直式卡片排版)
     function renderTablesConfigList() {
       const el = document.getElementById("tablesConfigList");
       if (!el) return;
       el.innerHTML = globalTableConfig.map((t, idx) => `
-        <div style="background:#f8fafc; border:1px solid var(--border); padding:8px 12px; border-radius:10px; display:flex; align-items:center; gap:8px; font-size:14px;">
-          <strong>${t.name}</strong> <small style="color:var(--sub);">(?table=${t.id})</small>
-          <button class="btn btn-danger-outline" style="padding:2px 6px; font-size:11px;" onclick="removeTableConfig(${idx})">✕</button>
+        <div style="background:#f8fafc; border:1px solid var(--border); padding:10px 12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; font-size:14px;">
+          <div>
+            <strong style="color:#be123c;">ID: ${t.id}</strong> ➡️ <strong style="color:#0f172a; margin-left:4px;">${t.name}</strong>
+          </div>
+          <button class="btn btn-danger-outline" style="padding:4px 10px; font-size:12px;" onclick="removeTableConfig(${idx})">✕ 刪除</button>
         </div>
       `).join('');
     }
