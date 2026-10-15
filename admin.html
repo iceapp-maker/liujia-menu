@@ -347,11 +347,17 @@
   <!-- 專屬桌位 QR Code A4 排版預覽列印 Modal -->
   <div id="qrPrintModal" class="modal-overlay">
     <div class="modal-box" style="max-width:860px;">
-      <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
-        <h3>🖨️ 專屬桌位 QR Code 列印預覽 (A4 網格排版)</h3>
-        <div style="display:flex; gap:10px;">
-          <button class="btn btn-gray" onclick="closeQrPrintModal()">關閉</button>
-          <button class="btn btn-blue" onclick="window.print()">🖨️ 開始列印 (A4 格式)</button>
+      <div class="no-print" style="border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3>🖨️ 專屬桌位 QR Code 列印預覽 (A4 網格排版)</h3>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-gray" onclick="closeQrPrintModal()">關閉</button>
+            <button class="btn btn-blue" onclick="window.print()">🖨️ 開始列印 (A4 格式)</button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; background:#f8fafc; padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
+          <span style="font-size:13px; font-weight:bold; color:#334155; white-space:nowrap;">🔗 點餐首頁網址：</span>
+          <input type="text" id="qrBaseUrlInput" class="input-field" style="margin:0; flex:1; font-size:13px; background:#fff;" oninput="renderQrCardsFromInput()">
         </div>
       </div>
       <div id="qrGridContainer" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap:18px; padding:10px;"></div>
@@ -1900,11 +1906,35 @@
       showToast("🗑️ 桌位已移除");
     };
 
-    // 🖨️ 專屬桌位 QR Code 一鍵產生器 (整合穩定 qrcode.js)
+    // 🖨️ 專屬桌位 QR Code 一鍵產生器 (自動剔除 /admin 或 /admin.html 並轉為乾淨根網址)
+    function detectCleanClientBaseUrl() {
+      let raw = window.location.origin + window.location.pathname;
+      // 將結尾的 /admin.html 或 /admin 移除，保留乾淨的資料夾路徑 (例如 https://iceapp-maker.github.io/liujia-menu/)
+      let cleaned = raw.replace(/\/admin(\.html)?\/?$/i, "/");
+      if (!cleaned.endsWith("/") && !cleaned.endsWith(".html")) {
+        cleaned += "/";
+      }
+      return cleaned;
+    }
+
     window.openQrGeneratorModal = function() {
+      const baseInput = document.getElementById("qrBaseUrlInput");
+      if (baseInput && !baseInput.value.trim()) {
+        baseInput.value = detectCleanClientBaseUrl();
+      }
+      renderQrCardsFromInput();
+      document.getElementById("qrPrintModal").style.display = "flex";
+    };
+
+    window.renderQrCardsFromInput = function() {
       const grid = document.getElementById("qrGridContainer");
+      if (!grid) return;
       grid.innerHTML = "";
-      const baseUrl = window.location.href.replace(/admin\.html.*$/, "index.html");
+
+      let baseUrl = (document.getElementById("qrBaseUrlInput")?.value || detectCleanClientBaseUrl()).trim();
+      // 再次防呆：萬一有人貼入了含有 /admin 的網址，自動幫他洗掉
+      baseUrl = baseUrl.replace(/\/admin(\.html)?(\?.*)?$/i, "/");
+
       const sName = storeInfoData.store_name || "劉家川味牛肉麵";
 
       const allTargets = [
@@ -1932,8 +1962,6 @@
           correctLevel: QRCode.CorrectLevel.H
         });
       });
-
-      document.getElementById("qrPrintModal").style.display = "flex";
     };
 
     window.closeQrPrintModal = function() {
