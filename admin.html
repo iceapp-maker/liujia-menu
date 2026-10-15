@@ -1,4 +1,3 @@
-<!-- [Section 1: 網頁宣告與資源引用] Start -->
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -211,8 +210,8 @@
                 </select>
               </div>
               <div id="posTakeoutInputs" style="display:flex; gap:8px;">
-                <input type="text" id="posCustName" class="form-input" style="margin:0; flex:1;" placeholder="外帶稱呼(例:陳先生/電話客)">
-                <input type="tel" id="posCustPhone" class="form-input" style="margin:0; flex:1;" placeholder="電話(選填)">
+                <input type="text" id="posCustName" class="form-input" style="margin:0; flex:1;" placeholder="外帶稱呼(預設:櫃台外帶)">
+                <input type="tel" id="posCustPhone" class="form-input" style="margin:0; flex:1; border-color:#fca5a5;" placeholder="聯絡電話 (*外帶必填)">
               </div>
             </div>
 
@@ -327,17 +326,16 @@
         <h2 style="font-size: 19px;" id="adminHeaderTitle">🍜 櫃台接單與 POS 系統</h2>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
-        <button onclick="openPosModal()" class="btn" style="background:#f59e0b; color:#fff; font-size:14px; padding:9px 14px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">➕ 櫃台代客點餐</button>
-        <button onclick="triggerReset()" class="btn" style="background:#ef4444; color:white;">🔄 每日號碼歸零與清桌</button>
+        <button onclick="openPosModal()" class="btn" style="background:#f59e0b; color:#fff; font-size:14px; padding:9px 16px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">➕ 櫃台代客點餐</button>
       </div>
     </nav>
 
     <div class="nav-tabs">
       <button class="tab active" onclick="switchTab('ordersTab', this)">📋 即時接單與桌況</button>
-      <button class="tab" onclick="switchTab('historyTab', this)">🕒 今日已結帳歷史</button>
+      <button class="tab" onclick="switchTab('historyTab', this)">🕒 已結單</button>
       <button class="tab" onclick="switchTab('reportTab', this)">📊 營運報表與熱銷排行</button>
-      <button class="tab" onclick="switchTab('menuTab', this)">🍱 菜單售完開關</button>
-      <button class="tab" onclick="switchTab('settingsTab', this)">⚙️ 店務與桌位設定</button>
+      <button class="tab" onclick="switchTab('menuTab', this)">🍱 菜單管理</button>
+      <button class="tab" onclick="switchTab('settingsTab', this)">⚙️ 設定</button>
     </div>
 
     <!-- 分頁 1: 即時訂單 -->
@@ -349,15 +347,25 @@
       <div id="completedOrdersGrid" class="orders-grid"></div>
     </div>
 
-    <!-- 分頁 2: 歷史紀錄 -->
+    <!-- 分頁 2: 已結單 (支援設定檢索天數與日期標註) -->
     <div id="historyTab" class="content-section">
-      <h3 style="margin-bottom: 14px;">✅ 已完成結帳歸檔單據</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom: 14px;">
+        <h3>✅ 已結單歷史紀錄 (含結帳日期與時間)</h3>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="font-size:13px; font-weight:bold; color:#475569;">顯示範圍：</label>
+          <select id="historyDaysFilter" class="form-input" style="margin:0; width:auto; padding:6px 12px;" onchange="renderAllOrderSections()">
+            <option value="1">僅顯示今日</option>
+            <option value="3" selected>近 3 日已結單 (預設)</option>
+            <option value="5">近 5 日已結單</option>
+          </select>
+        </div>
+      </div>
       <div id="closedOrdersGrid" class="orders-grid"></div>
     </div>
 
     <!-- 分頁 3: 營運報表 -->
     <div id="reportTab" class="content-section">
-      <h3 style="margin-bottom: 14px;">📈 每日營業額與備料熱銷排行 (點擊卡片展開明細)</h3>
+      <h3 style="margin-bottom: 14px;">📈 每日營業額與備料熱銷排行 (標準版：顯示近 5 日)</h3>
       <div id="dailyReportContainer"></div>
     </div>
 
@@ -393,9 +401,9 @@
     <!-- 分頁 5: 店務與桌位設定 -->
     <div id="settingsTab" class="content-section">
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
-        <!-- 區塊 A: 動態店家基本資訊 -->
+        <!-- 區塊 A: 動態店家基本資訊與密碼修改 -->
         <div style="background:white; padding:20px; border-radius:14px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
-          <h3 style="margin-bottom:14px;">🏪 基本店家資訊設定</h3>
+          <h3 style="margin-bottom:14px;">🏪 基本店家資訊與安全性</h3>
           <label style="font-size:13px; font-weight:bold;">店家名稱</label>
           <input type="text" id="storeNameInput" class="form-input" placeholder="例：劉家川味牛肉麵">
           <label style="font-size:13px; font-weight:bold;">聯絡電話</label>
@@ -404,10 +412,16 @@
           <input type="text" id="storeAddressInput" class="form-input" placeholder="例：台南市永康區中山北路131號">
           <label style="font-size:13px; font-weight:bold;">顧客須知 / 營業說明</label>
           <textarea id="storeNoticeInput" class="form-input" rows="3" placeholder="輸入顯示於前台的注意事項..."></textarea>
-          <button class="btn btn-blue" style="width:100%; padding:12px;" onclick="saveStoreDetails()">💾 儲存店家基本資訊</button>
+          <button class="btn btn-blue" style="width:100%; padding:12px; margin-bottom:16px;" onclick="saveStoreDetails()">💾 儲存店家基本資訊</button>
+
+          <hr style="border:none; border-top:1px solid #e2e8f0; margin-bottom:16px;">
+          <h4 style="font-size:15px; margin-bottom:8px; color:#1e293b;">🔑 修改日常後台登入密碼</h4>
+          <label style="font-size:13px; font-weight:bold;">新後台密碼 (預設 1111)</label>
+          <input type="password" id="newStoreAdminPin" class="form-input" placeholder="輸入新的 4~8 位數密碼">
+          <button class="btn btn-green" style="width:100%; padding:12px;" onclick="saveNewStorePin()">🔑 更新後台密碼</button>
         </div>
 
-        <!-- 區塊 B: 營業時間與店休控制 -->
+        <!-- 區塊 B: 營業時間與店休公告 -->
         <div style="background:white; padding:20px; border-radius:14px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
           <h3 style="margin-bottom:14px;">⏰ 營業時間與店休公告</h3>
           
@@ -421,7 +435,7 @@
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 8px;">
               <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="setClosePreset('🎉 國定假日公休', '適逢國定假日，本店今日公休一天，祝您佳節愉快！')">🎉 國定假日</button>
               <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="setClosePreset('🙇‍♂️ 今日已售完', '感謝大家支持！今日備料已全數售完，提早打烊，明日請早！')">🙇‍♂️ 提早售完</button>
-              <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="setClosePreset('🛑 臨時店休中', '抱歉，本店今日因事臨時店休一日，造成不便敬請見諒！')">🛑 臨時店休</button>
+              <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="setClosePreset('🛑 臨時店休中', '抱歉，本店目前暫停接單，感謝您的體諒！')">🛑 臨時店休</button>
               <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="setClosePreset('✈️ 連假店休公告', '本店目前連假休息中，期待收假後繼續為您服務！')">✈️ 連假出遊</button>
             </div>
             <input type="text" id="closeTitleInput" class="form-input" style="margin-bottom:8px; background:#fff;" placeholder="標題 (例：🎉 國定假日公休)">
@@ -472,6 +486,15 @@
           <div id="tableConfigList" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto;"></div>
         </div>
       </div>
+
+      <!-- 區塊 D: 每日營業歸零與清桌 (安全收納於設定頁最底部) -->
+      <div style="margin-top: 24px; background: #fff1f2; border: 1px solid #fecdd3; padding: 20px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div>
+          <h3 style="color: #be123c; font-size: 17px; margin-bottom: 4px;">🔄 每日營業號碼歸零與全桌位清空</h3>
+          <p style="font-size: 13px; color: #881337;">請於每日開店前或打烊後點擊。這將會把取號機重置為 #100 號（下一單從 #101 開始），並將所有內用桌位恢復為「空閒」狀態。</p>
+        </div>
+        <button onclick="triggerReset()" class="btn" style="background:#e11d48; color:white; padding:12px 20px; font-size:14px; box-shadow:0 2px 6px rgba(225,29,72,0.3);">🔄 執行每日號碼歸零與清桌</button>
+      </div>
     </div>
   </div>
 <!-- [Section 5: HTML 後台主介面與版面配置] End -->
@@ -492,6 +515,8 @@
     const db = firebase.firestore();
 
     let allOrders = [];
+    let activeRealtimeOrdersMap = {};
+    let historyOrdersMap = {};
     let adminCategories = [];
     let adminMenuItems = [];
     let globalTableConfig = [];
@@ -541,8 +566,18 @@
         const docRef = db.collection("system_settings").doc("admin");
         const docSnap = await docRef.get();
         let actualPin = "1111";
-        if (!docSnap.exists) await docRef.set({ pin: "1111" });
-        else actualPin = docSnap.data().pin;
+        if (!docSnap.exists) {
+          await docRef.set({ pin: "1111" });
+        } else {
+          const data = docSnap.data();
+          // 支援第二招：遠端強制重置指令檢查
+          if (data.force_reset_pin === true) {
+            actualPin = "1111";
+            await docRef.update({ pin: "1111", force_reset_pin: false });
+          } else {
+            actualPin = data.pin || "1111";
+          }
+        }
 
         if (input === actualPin) {
           document.getElementById("loginScreen").style.display = "none";
@@ -651,6 +686,17 @@
         }, { merge: true });
         showToast("✅ 店家基本資訊已儲存！");
       } catch (e) { showToast("儲存失敗，請檢查網路。"); }
+    }
+
+    // 修改日常後台登入密碼
+    async function saveNewStorePin() {
+      const newPin = document.getElementById("newStoreAdminPin").value.trim();
+      if (!newPin || newPin.length < 4) return showToast("密碼長度至少需要 4 位數！");
+      try {
+        await db.collection("system_settings").doc("admin").set({ pin: newPin }, { merge: true });
+        document.getElementById("newStoreAdminPin").value = "";
+        showToast("🔑 後台登入密碼已成功更新！");
+      } catch (e) { showToast("密碼更新失敗"); }
     }
 
     async function toggleManualClose(isClosed) {
@@ -794,31 +840,76 @@
       return String(str || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
     }
 
+    function formatOrderDateTime(ts) {
+      if (!ts) return "剛剛 (同步中)";
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      if (isNaN(d.getTime())) return "";
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+    }
+
+    function mergeAndRefreshOrders() {
+      const combined = { ...historyOrdersMap, ...activeRealtimeOrdersMap };
+      allOrders = Object.values(combined).sort((a, b) => {
+        const ta = a.created_at && a.created_at.toMillis ? a.created_at.toMillis() : Date.now();
+        const tb = b.created_at && b.created_at.toMillis ? b.created_at.toMillis() : Date.now();
+        return tb - ta;
+      });
+      renderAllOrderSections();
+      renderDailyReports();
+    }
+
     function startListeningOrders() {
-      db.collection("orders").orderBy("created_at", "desc").limit(300).onSnapshot(snap => {
-        allOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderAllOrderSections();
-        renderDailyReports();
+      // 保險監聽器 1：專門無上限抓取所有「待製作(pending)」與「已出餐未結帳(completed)」單據，確保任何管道送單 100% 絕不漏接
+      db.collection("orders").where("status", "in", ["pending", "completed"]).onSnapshot(snap => {
+        activeRealtimeOrdersMap = {};
+        snap.docs.forEach(d => {
+          activeRealtimeOrdersMap[d.id] = { id: d.id, ...d.data() };
+        });
+        mergeAndRefreshOrders();
       }, err => {
-        console.error("訂單監聽發生錯誤:", err);
+        console.error("即時接單監聽錯誤:", err);
+      });
+
+      // 保險監聽器 2：抓取近 300 筆歷史訂單供「已結單」與「營運報表」檢索統計
+      db.collection("orders").orderBy("created_at", "desc").limit(300).onSnapshot(snap => {
+        historyOrdersMap = {};
+        snap.docs.forEach(d => {
+          historyOrdersMap[d.id] = { id: d.id, ...d.data() };
+        });
+        mergeAndRefreshOrders();
+      }, err => {
+        console.error("歷史訂單監聽錯誤:", err);
       });
     }
 
     function renderAllOrderSections() {
-      // 1. 廚房待製作：status 為 pending (不論是否已先付款，都留在廚房直到出餐)
       const pending = allOrders
         .filter(o => o.status === "pending")
         .sort((a,b) => (a.queue_number||0) - (b.queue_number||0));
 
-      // 2. 已出餐・用餐待結帳：status 為 completed 且「尚未付款 (!o.is_paid)」
       const diningUnpaid = allOrders
         .filter(o => o.status === "completed" && !o.is_paid)
         .sort((a,b) => (a.queue_number||0) - (b.queue_number||0));
 
-      // 3. 今日已結帳歷史：已出餐且已付款 (status === "completed" && o.is_paid)，相容舊版 closed
+      // 已結單天數過濾 (預設近 3 日)
+      const daysLimit = parseInt(document.getElementById("historyDaysFilter")?.value || "3");
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+
       const historyPaid = allOrders
         .filter(o => (o.status === "completed" && o.is_paid) || o.status === "closed")
-        .slice(0, 80);
+        .filter(o => {
+          const d = o.created_at && o.created_at.toDate ? o.created_at.toDate() : new Date();
+          const ordDate = new Date(d);
+          ordDate.setHours(0, 0, 0, 0);
+          const diffDays = Math.floor((now - ordDate) / (1000 * 60 * 60 * 24));
+          return diffDays >= 0 && diffDays < daysLimit;
+        });
 
       document.getElementById("pendingOrdersGrid").innerHTML = pending.length
         ? pending.map(o => buildOrderCardHTML(o, "pending")).join('')
@@ -830,7 +921,7 @@
 
       document.getElementById("closedOrdersGrid").innerHTML = historyPaid.length
         ? historyPaid.map(o => buildOrderCardHTML(o, "history")).join('')
-        : `<p style="color:#94a3b8;">尚無已結帳歷史紀錄</p>`;
+        : `<p style="color:#94a3b8;">所選天數範圍內尚無已結單紀錄</p>`;
     }
 
     function buildOrderCardHTML(ord, stage) {
@@ -847,6 +938,15 @@
 
       const safeTable = escapeSafeStr(ord.table_number);
       const qNum = Number(ord.queue_number || 0);
+      const dateTimeStr = formatOrderDateTime(ord.created_at);
+
+      // 組合外帶顧客稱呼與聯絡電話顯示
+      let custInfoHtml = "";
+      if (ord.customer_name || ord.customer_phone) {
+        const namePart = ord.customer_name || "外帶客";
+        const phonePart = ord.customer_phone ? ` / 📞 <a href="tel:${ord.customer_phone}" style="color:#1565c0; text-decoration:underline;">${ord.customer_phone}</a>` : "";
+        custInfoHtml = `<span style="color:#0f172a; font-weight:800;">(${namePart}${phonePart})</span>`;
+      }
 
       let actionBtns = "";
       if (stage === "pending") {
@@ -867,12 +967,13 @@
       return `
         <div class="order-card ${stage} ${ord.is_paid ? 'paid' : ''}">
           <div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <strong style="font-size:19px; color:var(--primary);">#${ord.queue_number}</strong>
               ${paidTag}
             </div>
+            <div style="font-size:12px; color:#64748b; margin-bottom:8px;">📅 ${dateTimeStr}</div>
             <div style="font-weight:bold; font-size:15px; margin-bottom:8px; color:#334155;">
-              📍 ${ord.table_number} ${ord.customer_name ? `(${ord.customer_name})` : ''}
+              📍 ${ord.table_number} ${custInfoHtml}
             </div>
             <div style="margin-bottom:10px;">${itemsHtml}</div>
             ${ord.note ? `<div style="background:#fef3c7; color:#92400e; padding:6px 8px; border-radius:6px; font-size:12px; margin-bottom:8px;">備註：${ord.note}</div>` : ''}
@@ -888,7 +989,6 @@
       `;
     }
 
-    // 出餐完畢：若已先付款，出餐後自動進入歷史紀錄並檢查清桌；若未付款則移至「用餐待結帳區」
     async function markOrderCompleted(orderId, queueNum, isPaid, tableNumStr) {
       const cleanTable = extractCleanTableName(tableNumStr);
       try {
@@ -903,13 +1003,11 @@
       } catch (e) { showToast("操作失敗"); }
     }
 
-    // 檢查該桌是否還有「未完成或未結帳」的單據，若無則自動清桌為 idle
     async function checkAndReleaseTableIfEmpty(cleanTable, justFinishedOrderIds = []) {
       if (!cleanTable) return;
       const remainingActive = allOrders.filter(o => {
         if (justFinishedOrderIds.includes(o.id)) return false;
         if (o.status === "cancelled" || o.status === "closed") return false;
-        // 只要是還沒出餐 (pending)，或是已出餐但還沒付錢 (completed && !is_paid)，都代表這桌還有人在用
         const stillActive = (o.status === "pending") || (o.status === "completed" && !o.is_paid);
         if (!stillActive) return false;
         return extractCleanTableName(o.table_number) === cleanTable;
@@ -919,7 +1017,6 @@
       }
     }
 
-    // 方案 C：智慧勾選結帳彈窗
     window.openSmartCheckout = function(triggerOrderId) {
       const targetOrd = allOrders.find(o => o.id === triggerOrderId);
       if (!targetOrd) return;
@@ -986,7 +1083,6 @@
           if (!ord) return;
           if (!cleanTable) cleanTable = extractCleanTableName(ord.table_number);
           const ref = db.collection("orders").doc(id);
-          // 標記為已付款；若該單原本已經是 completed (已出餐)，標記 is_paid: true 後就會自動進入歷史紀錄！
           batch.update(ref, { is_paid: true });
           if (ord.status === "completed") {
             fullyFinishedIds.push(id);
@@ -1056,7 +1152,7 @@
       } catch (e) { showToast("換桌失敗"); }
     };
 
-    // 每日營運報表與熱銷排行榜
+    // 標準版營運報表：限制僅顯示 5 天內 (不含今日) 的營運狀況
     function renderDailyReports() {
       const container = document.getElementById("dailyReportContainer");
       const paidOrders = allOrders.filter(o => o.status === "closed" || o.is_paid);
@@ -1066,19 +1162,41 @@
       }
 
       const grouped = {};
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
       paidOrders.forEach(o => {
         const d = o.created_at && o.created_at.toDate ? o.created_at.toDate() : new Date();
         const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        if (!grouped[dateKey]) grouped[dateKey] = { revenue: 0, count: 0, itemsMap: {} };
-        grouped[dateKey].revenue += Number(o.total_amount || 0);
-        grouped[dateKey].count += 1;
-        (o.items || []).forEach(it => {
-          grouped[dateKey].itemsMap[it.name] = (grouped[dateKey].itemsMap[it.name] || 0) + Number(it.qty || 1);
-        });
+        
+        // 過濾：只保留 5 天內 (不含今日)
+        const orderDateOnly = new Date(d);
+        orderDateOnly.setHours(0,0,0,0);
+        const diffTime = today - orderDateOnly;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays >= 0 && diffDays <= 5) {
+          if (!grouped[dateKey]) grouped[dateKey] = { revenue: 0, count: 0, itemsMap: {} };
+          grouped[dateKey].revenue += Number(o.total_amount || 0);
+          grouped[dateKey].count += 1;
+          (o.items || []).forEach(it => {
+            grouped[dateKey].itemsMap[it.name] = (grouped[dateKey].itemsMap[it.name] || 0) + Number(it.qty || 1);
+          });
+        }
       });
 
       const sortedDates = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
-      container.innerHTML = sortedDates.map((dateStr, idx) => {
+      if (!sortedDates.length) {
+        container.innerHTML = `
+          <div style="background:white; border-radius:12px; padding:20px; text-align:center;">
+            <p style="color:#64748b; font-size:14px; margin-bottom:8px;">📊 標準版營運報表：目前顯示 5 天內之歷史營業紀錄。</p>
+            <p style="color:#94a3b8; font-size:13px;">(最近 5 天內暫無已結帳營收)</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = sortedDates.map((dateStr, idx) => {
         const data = grouped[dateStr];
         const sortedItems = Object.entries(data.itemsMap).sort((a,b) => b[1] - a[1]);
         const rankHtml = sortedItems.map(([name, qty], rIdx) => {
@@ -1105,11 +1223,19 @@
           </div>
         `;
       }).join('');
+
+      html += `
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; text-align:center; margin-top:16px;">
+          <p style="color:#64748b; font-size:13px;">🔒 標準版限制：僅顯示 5 日內營運資料。如需解鎖完整週/月報表、Excel 帳務匯出與雲端清理，請聯繫系統商升級進階版。</p>
+        </div>
+      `;
+
+      container.innerHTML = html;
     }
   </script>
 <!-- [Section 8: JS 訂單接單與叫號邏輯] End -->
 
-<!-- [Section 9: JS 菜單開關邏輯] Start -->
+<!-- [Section 9: JS 菜單開關與POS邏輯] Start -->
   <script>
     let editingMenuItemId = null;
     let editingModalAddons = [];
@@ -1132,7 +1258,6 @@
       });
     }
 
-    // 渲染分類管理膠囊與篩選下拉選單
     function renderAdminCategoriesBar() {
       const pillBox = document.getElementById("adminCategoryPills");
       const filterSel = document.getElementById("adminMenuFilterCat");
@@ -1185,7 +1310,6 @@
     };
 
     window.promptEditCategory = function(catId, oldName, oldOrder) {
-      // 填入上方輸入框協助快速修改或新建，並用自訂彈窗處理排序累加
       const newOrder = oldOrder + 1;
       showConfirm(`要將「${oldName}」的排序權重調整為 #${newOrder} 嗎？\n(數字越小排越前面，目前為 #${oldOrder})`, async (yes) => {
         if (!yes) return;
@@ -1211,7 +1335,6 @@
       });
     };
 
-    // 渲染完整餐點管理卡片 (依分類分組)
     window.renderAdminMenuManagement = function() {
       const container = document.getElementById("adminMenuContainer");
       if (!container) return;
@@ -1221,7 +1344,6 @@
         ? adminCategories.map(c => c.name)
         : [filterCat];
 
-      // 若有未歸類的孤兒品項也列出來
       const knownCatNames = adminCategories.map(c => c.name);
       const orphanItems = adminMenuItems.filter(i => !knownCatNames.includes(i.category_name));
 
@@ -1305,7 +1427,6 @@
       } catch (e) { showToast("更新失敗"); }
     }
 
-    // ================= 菜單品項 新增 / 編輯 彈窗邏輯 =================
     window.openMenuItemModal = function(itemId = null, defaultCategory = null) {
       renderAdminCategoriesBar();
       editingMenuItemId = itemId;
@@ -1445,7 +1566,6 @@
       });
     };
 
-    // ================= 櫃台代客點餐 (POS) 邏輯 =================
     window.openPosModal = function() {
       posCart = [];
       posActiveItem = null;
@@ -1642,6 +1762,10 @@
       const tagVal = document.getElementById("posOrderTagSelect").value;
       const custName = isTakeout ? (document.getElementById("posCustName").value.trim() || "櫃台外帶") : "";
       const custPhone = isTakeout ? document.getElementById("posCustPhone").value.trim() : "";
+      if (isTakeout && !custPhone) {
+        document.getElementById("posCustPhone").focus();
+        return showToast("⚠️ 外帶訂單請輸入顧客聯絡電話！");
+      }
       const note = document.getElementById("posOrderNote").value.trim();
       const totalAmount = posCart.reduce((s, i) => s + i.subtotal, 0);
 
@@ -1680,6 +1804,9 @@
         });
 
         closePosModal();
+        // 自動切換回「即時接單與桌況」分頁，讓櫃台人員立即看到剛送出的訂單
+        const firstTabBtn = document.querySelector(".nav-tabs .tab");
+        if (firstTabBtn) switchTab('ordersTab', firstTabBtn);
         showToast(isPaidNow ? "✅ 代客點餐完成 (已收現送廚)！" : "🔥 代客點餐完成 (已送廚房)！");
       } catch (e) {
         console.error(e);
@@ -1687,6 +1814,6 @@
       }
     };
   </script>
-<!-- [Section 9: JS 菜單開關邏輯] End -->
+<!-- [Section 9: JS 菜單開關與POS邏輯] End -->
 </body>
 </html>
