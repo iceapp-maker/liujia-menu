@@ -409,12 +409,38 @@
 
         <!-- 區塊 B: 營業時間與店休控制 -->
         <div style="background:white; padding:20px; border-radius:14px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
-          <h3 style="margin-bottom:14px;">⏰ 營業時間與臨時店休</h3>
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:#fff1f2; border-radius:10px; margin-bottom:16px;">
-            <span style="font-weight:bold; color:#be123c;">🛑 緊急臨時店休開關</span>
-            <input type="checkbox" id="manualCloseToggle" style="width:22px; height:22px;" onchange="toggleManualClose(this.checked)">
+          <h3 style="margin-bottom:14px;">⏰ 營業時間與店休公告</h3>
+          
+          <!-- 升級版：暫停接單開關 + 原因與公告設定 -->
+          <div style="padding:14px; background:#fff1f2; border:1px solid #fecdd3; border-radius:10px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <span style="font-weight:bold; color:#be123c; font-size:15px;">🛑 立即暫停營業開關</span>
+              <input type="checkbox" id="manualCloseToggle" style="width:22px; height:22px; cursor:pointer;" onchange="toggleManualClose(this.checked)">
+            </div>
+            <label style="font-size:12px; font-weight:bold; color:#881337;">前台顯示標題 (可點選快速帶入)：</label>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 8px;">
+              <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="setClosePreset('🎉 國定假日公休', '適逢國定假日，本店今日公休一天，祝您佳節愉快！')">🎉 國定假日</button>
+              <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="setClosePreset('🙇‍♂️ 今日已售完', '感謝大家支持！今日備料已全數售完，提早打烊，明日請早！')">🙇‍♂️ 提早售完</button>
+              <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="setClosePreset('🛑 臨時店休中', '抱歉，本店今日因事臨時店休一日，造成不便敬請見諒！')">🛑 臨時店休</button>
+              <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="setClosePreset('✈️ 連假店休公告', '本店目前連假休息中，期待收假後繼續為您服務！')">✈️ 連假出遊</button>
+            </div>
+            <input type="text" id="closeTitleInput" class="form-input" style="margin-bottom:8px; background:#fff;" placeholder="標題 (例：🎉 國定假日公休)">
+            <textarea id="closeReasonInput" class="form-input" rows="2" style="margin-bottom:8px; background:#fff;" placeholder="詳細說明 (例：慶祝雙十國慶，本店今日公休一日，明日正常營業！)"></textarea>
+            <button type="button" class="btn btn-red" style="width:100%; background:#e11d48; color:#fff;" onclick="saveManualCloseDetails()">💾 更新店休公告文字</button>
           </div>
-          <label style="font-size:13px; font-weight:bold; display:block; margin-bottom:8px;">固定公休日</label>
+
+          <!-- 新增：預排特定休假日期 (國定假日/特休) -->
+          <div style="padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; margin-bottom:16px;">
+            <label style="font-size:13px; font-weight:bold; color:#334155; display:block; margin-bottom:6px;">📅 預排特定公休日期 (國定假日自動攔截)</label>
+            <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+              <input type="date" id="specialHolidayDate" class="form-input" style="margin:0; flex:1; min-width:130px;">
+              <input type="text" id="specialHolidayNote" class="form-input" style="margin:0; flex:1.5; min-width:140px;" placeholder="假日名稱(例:中秋節公休)">
+              <button type="button" class="btn btn-blue" onclick="addSpecialHoliday()">＋預排</button>
+            </div>
+            <div id="specialHolidaysList" style="display:flex; flex-direction:column; gap:6px; max-height:130px; overflow-y:auto;"></div>
+          </div>
+
+          <label style="font-size:13px; font-weight:bold; display:block; margin-bottom:8px;">每週固定公休日</label>
           <div id="closedDaysWrapper" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; font-size:14px;">
             <label><input type="checkbox" value="1"> 週一</label>
             <label><input type="checkbox" value="2"> 週二</label>
@@ -580,6 +606,9 @@
           document.getElementById("storeNoticeInput").value = globalStoreSettings.store_notice || "";
 
           document.getElementById("manualCloseToggle").checked = globalStoreSettings.manual_close || false;
+          document.getElementById("closeTitleInput").value = globalStoreSettings.close_title || "🛑 臨時店休中";
+          document.getElementById("closeReasonInput").value = globalStoreSettings.close_reason || "抱歉，本店目前暫停接單，感謝您的體諒！";
+          renderSpecialHolidaysList();
 
           const days = globalStoreSettings.closed_days || [];
           document.querySelectorAll("#closedDaysWrapper input").forEach(cb => {
@@ -625,11 +654,75 @@
     }
 
     async function toggleManualClose(isClosed) {
+      const close_title = document.getElementById("closeTitleInput").value.trim() || "🛑 臨時店休中";
+      const close_reason = document.getElementById("closeReasonInput").value.trim() || "抱歉，本店目前暫停接單，感謝您的體諒！";
       try {
-        await db.collection("system_settings").doc("store_info").update({ manual_close: isClosed });
-        showToast(isClosed ? "🚫 已開啟臨時店休！" : "✅ 已恢復正常接單！");
+        await db.collection("system_settings").doc("store_info").set({
+          manual_close: isClosed,
+          close_title,
+          close_reason
+        }, { merge: true });
+        showToast(isClosed ? `🚫 已開啟店休 (${close_title})！` : "✅ 已恢復正常營業接單！");
       } catch (e) { showToast("更新失敗"); }
     }
+
+    window.setClosePreset = function(title, reason) {
+      document.getElementById("closeTitleInput").value = title;
+      document.getElementById("closeReasonInput").value = reason;
+    };
+
+    window.saveManualCloseDetails = async function() {
+      const close_title = document.getElementById("closeTitleInput").value.trim() || "🛑 臨時店休中";
+      const close_reason = document.getElementById("closeReasonInput").value.trim() || "抱歉，本店目前暫停接單，感謝您的體諒！";
+      try {
+        await db.collection("system_settings").doc("store_info").set({
+          close_title,
+          close_reason
+        }, { merge: true });
+        showToast("✅ 店休公告文字已更新！");
+      } catch (e) { showToast("儲存失敗"); }
+    };
+
+    function renderSpecialHolidaysList() {
+      const box = document.getElementById("specialHolidaysList");
+      if (!box) return;
+      const list = globalStoreSettings.special_holidays || [];
+      if (!list.length) {
+        box.innerHTML = `<span style="font-size:12px; color:#94a3b8;">目前無預排之國定假日或特定店休</span>`;
+        return;
+      }
+      box.innerHTML = list.map((h, idx) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px;">
+          <span>📅 <strong>${h.date}</strong> - ${h.note || '特定公休'}</span>
+          <button type="button" class="btn btn-red" style="padding:2px 6px; font-size:11px;" onclick="removeSpecialHoliday(${idx})">✕</button>
+        </div>
+      `).join('');
+    }
+
+    window.addSpecialHoliday = async function() {
+      const dateVal = document.getElementById("specialHolidayDate").value;
+      const noteVal = document.getElementById("specialHolidayNote").value.trim() || "國定假日公休";
+      if (!dateVal) return showToast("請選擇公休日期！");
+      const list = Array.isArray(globalStoreSettings.special_holidays) ? [...globalStoreSettings.special_holidays] : [];
+      if (list.some(h => h.date === dateVal)) return showToast("該日期已經在預排清單中了！");
+      list.push({ date: dateVal, note: noteVal });
+      list.sort((a, b) => a.date.localeCompare(b.date));
+      try {
+        await db.collection("system_settings").doc("store_info").set({ special_holidays: list }, { merge: true });
+        document.getElementById("specialHolidayDate").value = "";
+        document.getElementById("specialHolidayNote").value = "";
+        showToast("✅ 已新增特定公休日！");
+      } catch (e) { showToast("新增失敗"); }
+    };
+
+    window.removeSpecialHoliday = async function(idx) {
+      const list = Array.isArray(globalStoreSettings.special_holidays) ? [...globalStoreSettings.special_holidays] : [];
+      list.splice(idx, 1);
+      try {
+        await db.collection("system_settings").doc("store_info").set({ special_holidays: list }, { merge: true });
+        showToast("🗑️ 已移除該預排公休日");
+      } catch (e) { showToast("移除失敗"); }
+    };
 
     async function saveStoreSettings() {
       let closed_days = [];
