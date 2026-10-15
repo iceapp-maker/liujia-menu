@@ -156,6 +156,157 @@
       </div>
     </div>
   </div>
+
+  <!-- 櫃台代客點餐 (POS) 彈窗 -->
+  <div id="posOrderModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 900px; width: 96%; max-height: 92vh; display: flex; flex-direction: column; padding: 18px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:12px;">
+        <h3 style="font-size:19px; color:#1e293b;">➕ 櫃台代客點餐 (POS)</h3>
+        <button onclick="closePosModal()" style="background:none; border:none; font-size:22px; color:#64748b; cursor:pointer;">✕</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:16px; overflow-y:auto; flex:1;">
+        <!-- 左側：選取餐點與規格 -->
+        <div style="display:flex; flex-direction:column; border-right:1px solid #f1f5f9; padding-right:10px;">
+          <div id="posCategoryTabs" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:10px; border-bottom:1px solid #e2e8f0;"></div>
+          <div id="posMenuGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap:8px; max-height:260px; overflow-y:auto; padding:4px;"></div>
+
+          <!-- 點選品項後的規格調整面板 -->
+          <div id="posItemConfigBox" style="display:none; margin-top:12px; background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong id="posConfItemName" style="font-size:16px; color:#d32f2f;">餐點名稱</strong>
+              <span id="posConfItemPrice" style="font-weight:bold; color:#b7791f;">$0</span>
+            </div>
+            <div id="posConfSizeArea" style="margin-bottom:8px; display:none;">
+              <div style="font-size:12px; color:#64748b; margin-bottom:4px;">份量選擇：</div>
+              <div id="posConfSizeChips" style="display:flex; gap:6px;"></div>
+            </div>
+            <div id="posConfAddonArea" style="margin-bottom:8px; display:none;">
+              <div style="font-size:12px; color:#64748b; margin-bottom:4px;">客製化加選：</div>
+              <div id="posConfAddonChips" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <button class="btn btn-gray" onclick="changePosItemQty(-1)">−</button>
+                <strong id="posConfQty" style="min-width:26px; text-align:center; font-size:16px;">1</strong>
+                <button class="btn btn-gray" onclick="changePosItemQty(1)">+</button>
+              </div>
+              <button class="btn btn-blue" onclick="addPosConfiguredItemToCart()">＋ 加入清單</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右側：用餐設定與已選清單 -->
+        <div style="display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:12px; border:1px solid #e2e8f0;">
+              <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <select id="posOrderTableSelect" class="form-input" style="margin:0; flex:2;" onchange="onPosTableChange()">
+                  <option value="外帶顧客">🛍️ 外帶顧客</option>
+                </select>
+                <select id="posOrderTagSelect" class="form-input" style="margin:0; flex:1; display:none;">
+                  <option value="">一般主單</option>
+                  <option value="(加單)">親友加單</option>
+                  <option value="(併桌)">陌生併桌</option>
+                </select>
+              </div>
+              <div id="posTakeoutInputs" style="display:flex; gap:8px;">
+                <input type="text" id="posCustName" class="form-input" style="margin:0; flex:1;" placeholder="外帶稱呼(例:陳先生/電話客)">
+                <input type="tel" id="posCustPhone" class="form-input" style="margin:0; flex:1;" placeholder="電話(選填)">
+              </div>
+            </div>
+
+            <h4 style="font-size:14px; color:#475569; margin-bottom:6px;">🛒 點餐明細</h4>
+            <div id="posCartList" style="max-height:200px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; padding:8px; margin-bottom:10px; background:#fff;"></div>
+            <input type="text" id="posOrderNote" class="form-input" style="margin-bottom:8px;" placeholder="整單備註 (例：不要香菜、自備餐盒...)">
+          </div>
+
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:#fef2f2; border-radius:8px; margin-bottom:10px;">
+              <span style="font-weight:bold; color:#991b1b;">應收總計：</span>
+              <strong id="posCartTotal" style="font-size:22px; color:var(--primary);">$0</strong>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-blue" style="flex:1; padding:12px; font-size:14px;" onclick="submitPosOrder(false)">🔥 送廚 (未付款)</button>
+              <button class="btn btn-green" style="flex:1; padding:12px; font-size:14px;" onclick="submitPosOrder(true)">💰 現場收現並送廚</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 菜單品項 新增/編輯 Modal -->
+  <div id="menuItemModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 520px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:14px;">
+        <h3 id="menuModalTitle" style="font-size:18px;">➕ 新增餐點品項</h3>
+        <button onclick="closeMenuItemModal()" style="background:none; border:none; font-size:20px; color:#64748b; cursor:pointer;">✕</button>
+      </div>
+
+      <label style="font-size:13px; font-weight:bold;">所屬分類</label>
+      <select id="editItemCategory" class="form-input"></select>
+
+      <label style="font-size:13px; font-weight:bold;">餐點名稱</label>
+      <input type="text" id="editItemName" class="form-input" placeholder="例：紅燒牛肉麵">
+
+      <label style="font-size:13px; font-weight:bold;">計價模式</label>
+      <select id="editItemType" class="form-input" onchange="onEditItemTypeChange()">
+        <option value="fixed">固定單一價格 (例：滷肉飯、小菜)</option>
+        <option value="size">大小碗分價 (例：小碗 / 大碗)</option>
+        <option value="dumpling">論顆計價＋最低顆數限制 (例：水餃)</option>
+      </select>
+
+      <!-- 固定價格與水餃單價區 -->
+      <div id="editFixedPriceBox">
+        <label style="font-size:13px; font-weight:bold;">單價 ($)</label>
+        <input type="number" step="0.5" id="editItemPrice" class="form-input" placeholder="例：70 或 4.5">
+      </div>
+
+      <!-- 大小碗價格區 -->
+      <div id="editSizePriceBox" style="display:none; gap:10px;">
+        <div style="flex:1;">
+          <label style="font-size:13px; font-weight:bold;">小碗價格 ($)</label>
+          <input type="number" id="editItemPriceSmall" class="form-input" placeholder="例：70">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:13px; font-weight:bold;">大碗價格 ($)</label>
+          <input type="number" id="editItemPriceLarge" class="form-input" placeholder="例：80">
+        </div>
+      </div>
+
+      <!-- 水餃最低數量區 -->
+      <div id="editMinQtyBox" style="display:none;">
+        <label style="font-size:13px; font-weight:bold;">最低起點顆數</label>
+        <input type="number" id="editItemMinQty" class="form-input" value="10" placeholder="例：10">
+      </div>
+
+      <!-- 客製化選項 (Addons) 管理 -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-top:4px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:13px; font-weight:bold; color:#334155;">🛠️ 客製化加選項目 (可複選，如：加麵、不要蔥)</span>
+        </div>
+        <div style="display:flex; gap:6px; margin-bottom:8px;">
+          <input type="text" id="newAddonName" class="form-input" style="margin:0; flex:2;" placeholder="選項名稱 (例: 加麵 (+10元) / 不要蔥)">
+          <input type="number" id="newAddonPrice" class="form-input" style="margin:0; flex:1;" placeholder="加價 (0或10)" value="0">
+          <button type="button" class="btn btn-blue" onclick="addEditModalAddon()">＋新增</button>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+          <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="quickAddPresetAddon('加麵 (+10元)', 10)">⚡ 快加：加麵+$10</button>
+          <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="quickAddPresetAddon('加飯 (+10元)', 10)">⚡ 快加：加飯+$10</button>
+          <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="quickAddPresetAddon('不要蔥', 0)">⚡ 快加：不要蔥</button>
+          <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="quickAddPresetAddon('加辣', 0)">⚡ 快加：加辣</button>
+          <button type="button" class="btn btn-gray" style="font-size:11px; padding:4px 8px;" onclick="quickAddPresetAddon('加麻油', 0)">⚡ 快加：加麻油</button>
+        </div>
+        <div id="editModalAddonsList" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-gray" style="flex:1; padding:12px;" onclick="closeMenuItemModal()">取消</button>
+        <button class="btn btn-green" style="flex:2; padding:12px;" onclick="saveMenuItemModal()">💾 儲存餐點設定</button>
+      </div>
+    </div>
+  </div>
 <!-- [Section 3: HTML 共用元件與彈窗] End -->
 
 <!-- [Section 4: HTML 登入畫面] Start -->
@@ -175,7 +326,10 @@
       <div style="display:flex; align-items:center; gap:12px;">
         <h2 style="font-size: 19px;" id="adminHeaderTitle">🍜 櫃台接單與 POS 系統</h2>
       </div>
-      <button onclick="triggerReset()" class="btn" style="background:#ef4444; color:white;">🔄 每日號碼歸零與清桌</button>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button onclick="openPosModal()" class="btn" style="background:#f59e0b; color:#fff; font-size:14px; padding:9px 14px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">➕ 櫃台代客點餐</button>
+        <button onclick="triggerReset()" class="btn" style="background:#ef4444; color:white;">🔄 每日號碼歸零與清桌</button>
+      </div>
     </nav>
 
     <div class="nav-tabs">
@@ -207,10 +361,33 @@
       <div id="dailyReportContainer"></div>
     </div>
 
-    <!-- 分頁 4: 菜單開關 -->
+    <!-- 分頁 4: 完整菜單管理 (分類 + 新增/編輯/改價/售完開關) -->
     <div id="menuTab" class="content-section">
-      <h3 style="margin-bottom: 14px;">🍱 餐點上架 / 售完即時控制</h3>
-      <div id="adminMenuContainer" class="orders-grid"></div>
+      <!-- 區塊 1：分類管理面板 -->
+      <div style="background:white; padding:18px; border-radius:14px; box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <h3 style="font-size:17px;">📂 菜單分類管理</h3>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input type="text" id="newCatNameInput" class="form-input" style="margin:0; width:160px;" placeholder="新分類名稱(例:小菜)">
+            <input type="number" id="newCatOrderInput" class="form-input" style="margin:0; width:90px;" placeholder="排序(例:5)">
+            <button class="btn btn-blue" onclick="addMenuCategory()">＋ 新增分類</button>
+          </div>
+        </div>
+        <div id="adminCategoryPills" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+      </div>
+
+      <!-- 區塊 2：菜色品項列表與新增按鈕 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <h3 style="font-size:18px;">🍱 餐點品項與價格管理</h3>
+          <select id="adminMenuFilterCat" class="form-input" style="margin:0; width:auto; padding:6px 12px;" onchange="renderAdminMenuManagement()">
+            <option value="ALL">全部顯示</option>
+          </select>
+        </div>
+        <button class="btn btn-green" style="padding:10px 16px; font-size:14px;" onclick="openMenuItemModal()">➕ 新增餐點品項</button>
+      </div>
+
+      <div id="adminMenuContainer"></div>
     </div>
 
     <!-- 分頁 5: 店務與桌位設定 -->
@@ -289,12 +466,22 @@
     const db = firebase.firestore();
 
     let allOrders = [];
+    let adminCategories = [];
+    let adminMenuItems = [];
     let globalTableConfig = [];
     let globalTablesStatus = {};
     let globalStoreSettings = {};
     let confirmCallback = null;
     let currentEditingOrderId = null;
     let currentCheckoutCandidates = [];
+
+    // POS 代客點餐專用狀態
+    let posCurrentCategory = "";
+    let posCart = [];
+    let posActiveItem = null;
+    let posSelectedSize = null;
+    let posSelectedAddons = [];
+    let posItemQty = 1;
 
     function showToast(msg) {
       const t = document.getElementById("toast");
@@ -510,11 +697,17 @@
       return tableNumStr.replace("內用 - ", "").replace(" (加單)", "").replace(" (併桌)", "").trim();
     }
 
+    function escapeSafeStr(str) {
+      return String(str || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    }
+
     function startListeningOrders() {
       db.collection("orders").orderBy("created_at", "desc").limit(300).onSnapshot(snap => {
         allOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderAllOrderSections();
         renderDailyReports();
+      }, err => {
+        console.error("訂單監聽發生錯誤:", err);
       });
     }
 
@@ -559,19 +752,22 @@
         ? `<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:6px; font-size:12px; font-weight:bold;">✅ 已付款</span>`
         : `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:6px; font-size:12px; font-weight:bold;">未付款</span>`;
 
+      const safeTable = escapeSafeStr(ord.table_number);
+      const qNum = Number(ord.queue_number || 0);
+
       let actionBtns = "";
       if (stage === "pending") {
         actionBtns = `
-          <button class="btn btn-blue" style="flex:1;" onclick="markOrderCompleted('${ord.id}', ${ord.queue_number}, ${!!ord.is_paid}, '${ord.table_number}')">🔔 出餐完畢</button>
+          <button class="btn btn-blue" style="flex:1;" onclick="markOrderCompleted('${ord.id}', ${qNum}, ${!!ord.is_paid}, '${safeTable}')">🔔 出餐完畢</button>
           ${!ord.is_paid ? `<button class="btn btn-green" style="flex:1;" onclick="openSmartCheckout('${ord.id}')">💰 先行結帳</button>` : ''}
           <button class="btn btn-gray" onclick="openChangeTableModal('${ord.id}')">換桌</button>
-          <button class="btn btn-red" onclick="cancelOrder('${ord.id}', '${ord.table_number}')">作廢</button>
+          <button class="btn btn-red" onclick="cancelOrder('${ord.id}', '${safeTable}')">作廢</button>
         `;
       } else if (stage === "completed") {
         actionBtns = `
           <button class="btn btn-green" style="flex:1;" onclick="openSmartCheckout('${ord.id}')">💰 結帳清桌</button>
           <button class="btn btn-gray" onclick="openChangeTableModal('${ord.id}')">換桌</button>
-          <button class="btn btn-red" onclick="cancelOrder('${ord.id}', '${ord.table_number}')">作廢</button>
+          <button class="btn btn-red" onclick="cancelOrder('${ord.id}', '${safeTable}')">作廢</button>
         `;
       }
 
@@ -727,9 +923,15 @@
 
     function updatePosTableSelect() {
       const sel = document.getElementById("posTableSelect");
-      if (!sel) return;
-      sel.innerHTML = `<option value="外帶顧客">🛍️ 外帶顧客</option>` +
+      const optionsHtml = `<option value="外帶顧客">🛍️ 外帶顧客</option>` +
         globalTableConfig.map(t => `<option value="內用 - ${t.name}">🪑 內用 - ${t.name}</option>`).join('');
+      if (sel) sel.innerHTML = optionsHtml;
+
+      const posOrderSel = document.getElementById("posOrderTableSelect");
+      if (posOrderSel) {
+        posOrderSel.innerHTML = `<option value="外帶顧客">🛍️ 外帶顧客</option>` +
+          globalTableConfig.map(t => `<option value="${t.name}">🪑 內用 - ${t.name}</option>`).join('');
+      }
     }
 
     window.openChangeTableModal = function(orderId) {
@@ -816,25 +1018,191 @@
 
 <!-- [Section 9: JS 菜單開關邏輯] Start -->
   <script>
+    let editingMenuItemId = null;
+    let editingModalAddons = [];
+
     function startListeningMenu() {
+      db.collection("menu_categories").orderBy("sort_order").onSnapshot(snap => {
+        adminCategories = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.is_active !== false);
+        if (!posCurrentCategory && adminCategories.length) {
+          posCurrentCategory = adminCategories[0].name;
+        }
+        renderAdminCategoriesBar();
+        renderAdminMenuManagement();
+        renderPosCategories();
+      });
+
       db.collection("menu_items").onSnapshot(snap => {
-        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const container = document.getElementById("adminMenuContainer");
-        container.innerHTML = items.map(it => {
-          const avail = it.is_available !== false;
-          return `
-            <div style="background:white; padding:14px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 5px rgba(0,0,0,0.04);">
+        adminMenuItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderAdminMenuManagement();
+        renderPosMenuGrid();
+      });
+    }
+
+    // 渲染分類管理膠囊與篩選下拉選單
+    function renderAdminCategoriesBar() {
+      const pillBox = document.getElementById("adminCategoryPills");
+      const filterSel = document.getElementById("adminMenuFilterCat");
+      const modalCatSel = document.getElementById("editItemCategory");
+
+      if (pillBox) {
+        if (!adminCategories.length) {
+          pillBox.innerHTML = `<span style="color:#94a3b8; font-size:13px;">目前尚無分類，請由上方新增</span>`;
+        } else {
+          pillBox.innerHTML = adminCategories.map(c => `
+            <div style="display:inline-flex; align-items:center; gap:8px; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 12px; border-radius:20px; font-size:13px;">
+              <strong>#${c.sort_order || 1} ${c.name}</strong>
+              <button onclick="promptEditCategory('${c.id}', '${escapeSafeStr(c.name)}', ${c.sort_order || 1})" style="background:none; border:none; color:#1565c0; cursor:pointer; font-size:12px; font-weight:bold;">改名/排序</button>
+              <button onclick="deleteMenuCategory('${c.id}', '${escapeSafeStr(c.name)}')" style="background:none; border:none; color:#b91c1c; cursor:pointer; font-size:12px; font-weight:bold;">✕</button>
+            </div>
+          `).join('');
+        }
+      }
+
+      if (filterSel) {
+        const prevVal = filterSel.value || "ALL";
+        filterSel.innerHTML = `<option value="ALL">📂 顯示全部分類 (${adminMenuItems.length})</option>` +
+          adminCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        if (prevVal === "ALL" || adminCategories.some(c => c.name === prevVal)) {
+          filterSel.value = prevVal;
+        }
+      }
+
+      if (modalCatSel) {
+        modalCatSel.innerHTML = adminCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      }
+    }
+
+    window.addMenuCategory = async function() {
+      const name = document.getElementById("newCatNameInput").value.trim();
+      const orderVal = parseInt(document.getElementById("newCatOrderInput").value) || (adminCategories.length + 1);
+      if (!name) return showToast("請輸入分類名稱！");
+      if (adminCategories.some(c => c.name === name)) return showToast("此分類名稱已存在！");
+
+      try {
+        await db.collection("menu_categories").add({
+          name: name,
+          sort_order: orderVal,
+          is_active: true
+        });
+        document.getElementById("newCatNameInput").value = "";
+        document.getElementById("newCatOrderInput").value = "";
+        showToast("✅ 分類已新增！");
+      } catch (e) { showToast("新增分類失敗"); }
+    };
+
+    window.promptEditCategory = function(catId, oldName, oldOrder) {
+      // 填入上方輸入框協助快速修改或新建，並用自訂彈窗處理排序累加
+      const newOrder = oldOrder + 1;
+      showConfirm(`要將「${oldName}」的排序權重調整為 #${newOrder} 嗎？\n(數字越小排越前面，目前為 #${oldOrder})`, async (yes) => {
+        if (!yes) return;
+        try {
+          await db.collection("menu_categories").doc(catId).update({ sort_order: newOrder });
+          showToast("✅ 分類排序已更新！");
+        } catch (e) { showToast("更新失敗"); }
+      });
+    };
+
+    window.deleteMenuCategory = function(catId, catName) {
+      const count = adminMenuItems.filter(i => i.category_name === catName).length;
+      const warnMsg = count > 0
+        ? `分類「${catName}」底下還有 ${count} 道餐點！\n確定要連同該分類一起刪除嗎？`
+        : `確定要刪除「${catName}」分類嗎？`;
+
+      showConfirm(warnMsg, async (yes) => {
+        if (!yes) return;
+        try {
+          await db.collection("menu_categories").doc(catId).delete();
+          showToast("🗑️ 分類已刪除");
+        } catch (e) { showToast("刪除失敗"); }
+      });
+    };
+
+    // 渲染完整餐點管理卡片 (依分類分組)
+    window.renderAdminMenuManagement = function() {
+      const container = document.getElementById("adminMenuContainer");
+      if (!container) return;
+      const filterCat = document.getElementById("adminMenuFilterCat")?.value || "ALL";
+
+      const catsToShow = filterCat === "ALL"
+        ? adminCategories.map(c => c.name)
+        : [filterCat];
+
+      // 若有未歸類的孤兒品項也列出來
+      const knownCatNames = adminCategories.map(c => c.name);
+      const orphanItems = adminMenuItems.filter(i => !knownCatNames.includes(i.category_name));
+
+      let html = "";
+      catsToShow.forEach(catName => {
+        const items = adminMenuItems.filter(i => i.category_name === catName);
+        if (!items.length && filterCat === "ALL") return;
+
+        html += `
+          <div style="margin-bottom: 22px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid #e2e8f0;">
+              <h4 style="font-size:16px; color:#1e293b;">📂 ${catName} <span style="font-size:13px; color:#64748b; font-weight:normal;">(${items.length} 項)</span></h4>
+              <button class="btn btn-gray" style="font-size:12px; padding:4px 10px;" onclick="openMenuItemModal(null, '${escapeSafeStr(catName)}')">＋ 在此分類新增餐點</button>
+            </div>
+            <div class="orders-grid">
+              ${items.map(it => buildAdminMenuItemCard(it)).join('')}
+            </div>
+          </div>
+        `;
+      });
+
+      if (filterCat === "ALL" && orphanItems.length > 0) {
+        html += `
+          <div style="margin-bottom: 22px;">
+            <h4 style="font-size:16px; color:#b91c1c; margin-bottom:10px;">⚠️ 未分類項目 (${orphanItems.length} 項)</h4>
+            <div class="orders-grid">
+              ${orphanItems.map(it => buildAdminMenuItemCard(it)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (!html) {
+        html = `<p style="color:#94a3b8; text-align:center; padding:30px;">目前尚無餐點資料，請點擊右上角「➕ 新增餐點品項」</p>`;
+      }
+      container.innerHTML = html;
+    };
+
+    function buildAdminMenuItemCard(it) {
+      const avail = it.is_available !== false;
+      let priceBadge = "";
+      if (it.type === "size") {
+        priceBadge = `小碗 <strong>$${it.price_small}</strong> / 大碗 <strong>$${it.price_large}</strong>`;
+      } else if (it.type === "dumpling") {
+        priceBadge = `每顆 <strong>$${it.price}</strong> (最少 ${it.min_qty || 10} 顆)`;
+      } else {
+        priceBadge = `單價 <strong>$${it.price}</strong>`;
+      }
+
+      const addonsText = (it.addons && it.addons.length)
+        ? it.addons.map(a => a.name).join("、")
+        : "無客製化加選";
+
+      return `
+        <div style="background:white; padding:14px 16px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.05); border-left:5px solid ${avail ? 'var(--green)' : '#cbd5e1'}; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
               <div>
-                <div style="font-size:12px; color:#64748b;">${it.category_name}</div>
-                <strong style="font-size:16px;">${it.name}</strong>
+                <span style="font-size:11px; background:#f1f5f9; color:#475569; padding:2px 6px; border-radius:4px;">${it.category_name}</span>
+                <h4 style="font-size:17px; margin-top:4px; color:#0f172a;">${it.name}</h4>
               </div>
-              <button onclick="toggleMenuItem('${it.id}', ${!avail})" class="btn ${avail ? 'btn-green' : 'btn-red'}">
+              <button onclick="toggleMenuItem('${it.id}', ${!avail})" class="btn ${avail ? 'btn-green' : 'btn-red'}" style="flex-shrink:0;">
                 ${avail ? '🟢 供應中' : '🔴 已售完'}
               </button>
             </div>
-          `;
-        }).join('');
-      });
+            <div style="font-size:14px; color:var(--primary); margin-top:6px;">${priceBadge}</div>
+            <div style="font-size:12px; color:#64748b; margin-top:4px;">🛠️ 選項：${addonsText}</div>
+          </div>
+          <div style="display:flex; gap:8px; padding-top:8px; border-top:1px dashed #f1f5f9;">
+            <button class="btn btn-blue" style="flex:2;" onclick="openMenuItemModal('${it.id}')">✏️ 編輯 / 改價</button>
+            <button class="btn btn-red" style="flex:1;" onclick="deleteMenuItem('${it.id}', '${escapeSafeStr(it.name)}')">🗑️ 刪除</button>
+          </div>
+        </div>
+      `;
     }
 
     async function toggleMenuItem(itemId, nextState) {
@@ -843,6 +1211,388 @@
         showToast(nextState ? "✅ 已恢復上架供應" : "🚫 已標記為售完");
       } catch (e) { showToast("更新失敗"); }
     }
+
+    // ================= 菜單品項 新增 / 編輯 彈窗邏輯 =================
+    window.openMenuItemModal = function(itemId = null, defaultCategory = null) {
+      renderAdminCategoriesBar();
+      editingMenuItemId = itemId;
+      const catSelect = document.getElementById("editItemCategory");
+
+      if (itemId) {
+        const it = adminMenuItems.find(x => x.id === itemId);
+        if (!it) return;
+        document.getElementById("menuModalTitle").innerText = `✏️ 編輯餐點：${it.name}`;
+        catSelect.value = it.category_name;
+        document.getElementById("editItemName").value = it.name || "";
+        document.getElementById("editItemType").value = it.type || "fixed";
+        document.getElementById("editItemPrice").value = it.price !== undefined ? it.price : "";
+        document.getElementById("editItemPriceSmall").value = it.price_small !== undefined ? it.price_small : "";
+        document.getElementById("editItemPriceLarge").value = it.price_large !== undefined ? it.price_large : "";
+        document.getElementById("editItemMinQty").value = it.min_qty || 10;
+        editingModalAddons = Array.isArray(it.addons) ? [...it.addons] : [];
+      } else {
+        document.getElementById("menuModalTitle").innerText = "➕ 新增餐點品項";
+        if (defaultCategory) catSelect.value = defaultCategory;
+        document.getElementById("editItemName").value = "";
+        document.getElementById("editItemType").value = "fixed";
+        document.getElementById("editItemPrice").value = "";
+        document.getElementById("editItemPriceSmall").value = "";
+        document.getElementById("editItemPriceLarge").value = "";
+        document.getElementById("editItemMinQty").value = 10;
+        editingModalAddons = [];
+      }
+
+      onEditItemTypeChange();
+      renderEditModalAddons();
+      document.getElementById("menuItemModal").style.display = "flex";
+    };
+
+    window.closeMenuItemModal = function() {
+      document.getElementById("menuItemModal").style.display = "none";
+    };
+
+    window.onEditItemTypeChange = function() {
+      const t = document.getElementById("editItemType").value;
+      document.getElementById("editFixedPriceBox").style.display = (t === "fixed" || t === "dumpling") ? "block" : "none";
+      document.getElementById("editSizePriceBox").style.display = (t === "size") ? "flex" : "none";
+      document.getElementById("editMinQtyBox").style.display = (t === "dumpling") ? "block" : "none";
+    };
+
+    function renderEditModalAddons() {
+      const box = document.getElementById("editModalAddonsList");
+      if (!editingModalAddons.length) {
+        box.innerHTML = `<span style="font-size:12px; color:#94a3b8;">目前無客製化選項</span>`;
+        return;
+      }
+      box.innerHTML = editingModalAddons.map((ad, idx) => `
+        <span style="display:inline-flex; align-items:center; gap:6px; background:#e0f2fe; color:#0369a1; padding:4px 10px; border-radius:14px; font-size:12px; font-weight:bold;">
+          ${ad.name} ${Number(ad.price) > 0 ? `(+$${ad.price})` : ''}
+          <button type="button" onclick="removeEditModalAddon(${idx})" style="background:none; border:none; color:#0369a1; cursor:pointer; font-weight:bold;">✕</button>
+        </span>
+      `).join('');
+    }
+
+    window.addEditModalAddon = function() {
+      const name = document.getElementById("newAddonName").value.trim();
+      const price = Number(document.getElementById("newAddonPrice").value || 0);
+      if (!name) return showToast("請輸入客製化選項名稱！");
+      editingModalAddons.push({ name, price });
+      document.getElementById("newAddonName").value = "";
+      document.getElementById("newAddonPrice").value = "0";
+      renderEditModalAddons();
+    };
+
+    window.quickAddPresetAddon = function(name, price) {
+      if (editingModalAddons.some(a => a.name === name)) return showToast("已有相同選項！");
+      editingModalAddons.push({ name, price: Number(price) });
+      renderEditModalAddons();
+    };
+
+    window.removeEditModalAddon = function(idx) {
+      editingModalAddons.splice(idx, 1);
+      renderEditModalAddons();
+    };
+
+    window.saveMenuItemModal = async function() {
+      const category_name = document.getElementById("editItemCategory").value;
+      const name = document.getElementById("editItemName").value.trim();
+      const type = document.getElementById("editItemType").value;
+
+      if (!category_name) return showToast("請先建立並選擇所屬分類！");
+      if (!name) return showToast("請輸入餐點名稱！");
+
+      const catObj = adminCategories.find(c => c.name === category_name);
+      const payload = {
+        category_id: catObj ? catObj.id : "",
+        category_name,
+        name,
+        type,
+        addons: editingModalAddons
+      };
+
+      if (type === "size") {
+        const ps = Number(document.getElementById("editItemPriceSmall").value);
+        const pl = Number(document.getElementById("editItemPriceLarge").value);
+        if (!ps || !pl) return showToast("請填寫完整的小碗與大碗價格！");
+        payload.price_small = ps;
+        payload.price_large = pl;
+      } else {
+        const p = Number(document.getElementById("editItemPrice").value);
+        if (isNaN(p) || p <= 0) return showToast("請填寫有效的價格！");
+        payload.price = p;
+      }
+
+      if (type === "dumpling") {
+        payload.min_qty = Number(document.getElementById("editItemMinQty").value) || 10;
+      }
+
+      try {
+        if (editingMenuItemId) {
+          await db.collection("menu_items").doc(editingMenuItemId).update(payload);
+          showToast("✅ 餐點資料與價格已更新！");
+        } else {
+          payload.is_available = true;
+          await db.collection("menu_items").add(payload);
+          showToast("✅ 新餐點已成功上架！");
+        }
+        closeMenuItemModal();
+      } catch (e) {
+        console.error(e);
+        showToast("儲存失敗，請檢查網路");
+      }
+    };
+
+    window.deleteMenuItem = function(itemId, itemName) {
+      showConfirm(`確定要永久刪除餐點「${itemName}」嗎？`, async (yes) => {
+        if (!yes) return;
+        try {
+          await db.collection("menu_items").doc(itemId).delete();
+          showToast("🗑️ 餐點已刪除");
+        } catch (e) { showToast("刪除失敗"); }
+      });
+    };
+
+    // ================= 櫃台代客點餐 (POS) 邏輯 =================
+    window.openPosModal = function() {
+      posCart = [];
+      posActiveItem = null;
+      document.getElementById("posItemConfigBox").style.display = "none";
+      document.getElementById("posCustName").value = "";
+      document.getElementById("posCustPhone").value = "";
+      document.getElementById("posOrderNote").value = "";
+      updatePosTableSelect();
+      onPosTableChange();
+      renderPosCategories();
+      renderPosMenuGrid();
+      renderPosCart();
+      document.getElementById("posOrderModal").style.display = "flex";
+    };
+
+    window.closePosModal = function() {
+      document.getElementById("posOrderModal").style.display = "none";
+    };
+
+    window.onPosTableChange = function() {
+      const val = document.getElementById("posOrderTableSelect").value;
+      const isTakeout = (val === "外帶顧客");
+      document.getElementById("posTakeoutInputs").style.display = isTakeout ? "flex" : "none";
+      const tagSel = document.getElementById("posOrderTagSelect");
+      tagSel.style.display = isTakeout ? "none" : "block";
+      if (!isTakeout) {
+        const isOcc = globalTablesStatus && globalTablesStatus[val] === "occupied";
+        tagSel.value = isOcc ? "(加單)" : "";
+      }
+    };
+
+    function renderPosCategories() {
+      const wrap = document.getElementById("posCategoryTabs");
+      if (!wrap) return;
+      wrap.innerHTML = adminCategories.map(c => `
+        <button class="btn ${c.name === posCurrentCategory ? 'btn-blue' : 'btn-gray'}" onclick="selectPosCategory('${escapeSafeStr(c.name)}')">
+          ${c.name}
+        </button>
+      `).join('');
+    }
+
+    window.selectPosCategory = function(catName) {
+      posCurrentCategory = catName;
+      renderPosCategories();
+      renderPosMenuGrid();
+    };
+
+    function renderPosMenuGrid() {
+      const grid = document.getElementById("posMenuGrid");
+      if (!grid) return;
+      const list = adminMenuItems.filter(i => i.category_name === posCurrentCategory);
+      grid.innerHTML = list.map(it => {
+        const priceTxt = it.type === "size" ? `小$${it.price_small}/大$${it.price_large}` : `$${it.price}`;
+        const avail = it.is_available !== false;
+        return `
+          <div onclick="${avail ? `selectPosItem('${it.id}')` : ''}" style="border:1px solid #cbd5e1; border-radius:8px; padding:10px; background:${avail ? '#fff' : '#f1f5f9'}; opacity:${avail ? 1 : 0.5}; cursor:${avail ? 'pointer' : 'not-allowed'}; text-align:center;">
+            <div style="font-weight:bold; font-size:14px; margin-bottom:4px;">${it.name}</div>
+            <div style="font-size:12px; color:var(--primary); font-weight:bold;">${priceTxt}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.selectPosItem = function(itemId) {
+      const it = adminMenuItems.find(x => x.id === itemId);
+      if (!it) return;
+      posActiveItem = it;
+      posSelectedAddons = [];
+      posItemQty = it.type === "dumpling" ? (it.min_qty || 10) : 1;
+
+      document.getElementById("posConfItemName").innerText = it.name;
+      const sizeArea = document.getElementById("posConfSizeArea");
+      const sizeChips = document.getElementById("posConfSizeChips");
+      if (it.type === "size") {
+        sizeArea.style.display = "block";
+        posSelectedSize = { label: "小碗", price: Number(it.price_small) };
+        sizeChips.innerHTML = `
+          <button type="button" class="btn btn-blue pos-size-btn" onclick="pickPosSize('小碗', ${it.price_small}, this)">小碗 ($${it.price_small})</button>
+          <button type="button" class="btn btn-gray pos-size-btn" onclick="pickPosSize('大碗', ${it.price_large}, this)">大碗 ($${it.price_large})</button>
+        `;
+      } else {
+        sizeArea.style.display = "none";
+        posSelectedSize = null;
+      }
+
+      const addonArea = document.getElementById("posConfAddonArea");
+      const addonChips = document.getElementById("posConfAddonChips");
+      if (it.addons && it.addons.length) {
+        addonArea.style.display = "block";
+        addonChips.innerHTML = it.addons.map((ad, idx) => `
+          <button type="button" class="btn btn-gray pos-addon-btn" onclick="togglePosAddon(${idx}, this)">${ad.name}</button>
+        `).join('');
+      } else {
+        addonArea.style.display = "none";
+      }
+
+      updatePosItemConfigDisplay();
+      document.getElementById("posItemConfigBox").style.display = "block";
+    };
+
+    window.pickPosSize = function(label, price, btnEl) {
+      posSelectedSize = { label, price: Number(price) };
+      document.querySelectorAll(".pos-size-btn").forEach(b => { b.className = "btn btn-gray pos-size-btn"; });
+      btnEl.className = "btn btn-blue pos-size-btn";
+      updatePosItemConfigDisplay();
+    };
+
+    window.togglePosAddon = function(idx, btnEl) {
+      const ad = posActiveItem.addons[idx];
+      const ex = posSelectedAddons.findIndex(a => a.name === ad.name);
+      if (ex > -1) {
+        posSelectedAddons.splice(ex, 1);
+        btnEl.className = "btn btn-gray pos-addon-btn";
+      } else {
+        posSelectedAddons.push(ad);
+        btnEl.className = "btn btn-blue pos-addon-btn";
+      }
+      updatePosItemConfigDisplay();
+    };
+
+    window.changePosItemQty = function(delta) {
+      if (!posActiveItem) return;
+      const min = posActiveItem.type === "dumpling" ? (posActiveItem.min_qty || 10) : 1;
+      let next = posItemQty + delta;
+      if (next < min) next = min;
+      posItemQty = next;
+      updatePosItemConfigDisplay();
+    };
+
+    function updatePosItemConfigDisplay() {
+      document.getElementById("posConfQty").innerText = posItemQty;
+      const base = posActiveItem.type === "size" ? posSelectedSize.price : Number(posActiveItem.price);
+      const addP = posSelectedAddons.reduce((s, a) => s + Number(a.price || 0), 0);
+      const sub = Math.round((base + addP) * posItemQty);
+      document.getElementById("posConfItemPrice").innerText = `$${sub}`;
+    }
+
+    window.addPosConfiguredItemToCart = function() {
+      if (!posActiveItem) return;
+      const base = posActiveItem.type === "size" ? posSelectedSize.price : Number(posActiveItem.price);
+      const addP = posSelectedAddons.reduce((s, a) => s + Number(a.price || 0), 0);
+      const unit = base + addP;
+      const sub = Math.round(unit * posItemQty);
+
+      let specs = [];
+      if (posSelectedSize) specs.push(posSelectedSize.label);
+      if (posSelectedAddons.length) specs.push(posSelectedAddons.map(a => a.name).join(", "));
+
+      posCart.push({
+        item_id: posActiveItem.id,
+        name: posActiveItem.name,
+        spec: specs.join(" / "),
+        qty: posItemQty,
+        unit_price: unit,
+        subtotal: sub
+      });
+
+      document.getElementById("posItemConfigBox").style.display = "none";
+      renderPosCart();
+    };
+
+    function renderPosCart() {
+      const box = document.getElementById("posCartList");
+      if (!posCart.length) {
+        box.innerHTML = `<p style="color:#94a3b8; text-align:center; padding:16px 0; font-size:13px;">尚未選取餐點</p>`;
+        document.getElementById("posCartTotal").innerText = "$0";
+        return;
+      }
+      box.innerHTML = posCart.map((c, idx) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed #e2e8f0; font-size:13px;">
+          <div>
+            <strong>${c.name}</strong> <span style="color:var(--primary);">x${c.qty}</span>
+            ${c.spec ? `<div style="font-size:11px; color:#64748b;">${c.spec}</div>` : ''}
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <strong>$${c.subtotal}</strong>
+            <button class="btn btn-red" style="padding:2px 6px; font-size:11px;" onclick="removePosCartItem(${idx})">✕</button>
+          </div>
+        </div>
+      `).join('');
+      const total = posCart.reduce((s, i) => s + i.subtotal, 0);
+      document.getElementById("posCartTotal").innerText = `$${total}`;
+    }
+
+    window.removePosCartItem = function(idx) {
+      posCart.splice(idx, 1);
+      renderPosCart();
+    };
+
+    window.submitPosOrder = async function(isPaidNow) {
+      if (!posCart.length) return showToast("請先將餐點加入清單！");
+      const tableVal = document.getElementById("posOrderTableSelect").value;
+      const isTakeout = (tableVal === "外帶顧客");
+      const tagVal = document.getElementById("posOrderTagSelect").value;
+      const custName = isTakeout ? (document.getElementById("posCustName").value.trim() || "櫃台外帶") : "";
+      const custPhone = isTakeout ? document.getElementById("posCustPhone").value.trim() : "";
+      const note = document.getElementById("posOrderNote").value.trim();
+      const totalAmount = posCart.reduce((s, i) => s + i.subtotal, 0);
+
+      let finalTableStr = "外帶顧客";
+      if (!isTakeout) {
+        finalTableStr = tagVal ? `內用 - ${tableVal} ${tagVal}` : `內用 - ${tableVal}`;
+      }
+
+      try {
+        const todayRef = db.collection("system_status").doc("today");
+        const tablesRef = db.collection("system_status").doc("tables");
+        const newOrdRef = db.collection("orders").doc();
+
+        await db.runTransaction(async (transaction) => {
+          const todayDoc = await transaction.get(todayRef);
+          let nextNum = 101;
+          if (todayDoc.exists) {
+            nextNum = (todayDoc.data().last_queue_number || 100) + 1;
+          }
+          transaction.set(todayRef, { last_queue_number: nextNum }, { merge: true });
+          if (!isTakeout) {
+            transaction.set(tablesRef, { [tableVal]: "occupied" }, { merge: true });
+          }
+          transaction.set(newOrdRef, {
+            queue_number: nextNum,
+            table_number: finalTableStr,
+            customer_name: custName,
+            customer_phone: custPhone,
+            note: note,
+            items: posCart,
+            total_amount: totalAmount,
+            status: "pending",
+            is_paid: !!isPaidNow,
+            created_at: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        });
+
+        closePosModal();
+        showToast(isPaidNow ? "✅ 代客點餐完成 (已收現送廚)！" : "🔥 代客點餐完成 (已送廚房)！");
+      } catch (e) {
+        console.error(e);
+        showToast("送單失敗，請檢查網路");
+      }
+    };
   </script>
 <!-- [Section 9: JS 菜單開關邏輯] End -->
 </body>
