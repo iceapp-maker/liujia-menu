@@ -304,6 +304,16 @@
 <body>
 
 <!-- [Section 3: HTML 頂部導覽與基本彈窗] Start -->
+  <!-- 系統總授權停權遮罩 (最高優先級) -->
+  <div id="licenseLockOverlay" class="modal-overlay" style="z-index: 10000; background: rgba(15,23,42,0.98); display: none;">
+    <div class="modal-box" style="text-align: center; padding: 40px 20px; background: transparent; box-shadow: none;">
+      <h2 style="color: #f43f5e; font-size: 26px; margin-bottom: 16px;">🛠️ 系統維護中</h2>
+      <p id="licenseLockReason" style="font-size: 16px; color: #f8fafc; white-space: pre-line; line-height: 1.6;">
+        本店目前暫停提供線上點餐服務。
+      </p>
+    </div>
+  </div>
+
   <!-- 營業時間攔截遮罩 -->
   <div id="closedOverlay" class="modal-overlay" style="z-index: 9999; background: rgba(20,20,20,0.92);">
     <div class="modal-box" style="text-align: center; padding: 30px 20px;">
@@ -1138,10 +1148,25 @@
         activeTableOrders.sort((a, b) => (a.queue_number || 0) - (b.queue_number || 0));
         renderActiveOrdersDashboard();
       });
+
+      // 6. 監聽系統總授權開關 (連動總部停權鎖定)
+      db.collection("system_settings").doc("license").onSnapshot(doc => {
+        const overlay = document.getElementById("licenseLockOverlay");
+        if (doc.exists) {
+          const d = doc.data();
+          const isActive = d.license_active !== false;
+          if (!isActive) {
+            document.getElementById("licenseLockReason").innerText = d.lock_reason || "本店目前暫停提供線上點餐服務。";
+            overlay.style.display = "flex";
+          } else {
+            overlay.style.display = "none";
+          }
+        } else {
+          overlay.style.display = "none";
+        }
+      });
     }
 
     window.addEventListener("DOMContentLoaded", initRealtimeListeners);
   </script>
 <!-- [Section 10: JS Firebase 監聽與還原] End -->
-</body>
-</html>
