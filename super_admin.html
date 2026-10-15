@@ -216,10 +216,26 @@
         </div>
       </div>
 
-      <!-- 右欄：密碼救援與總授權鎖定 -->
+      <!-- 右欄：首次裝置綁定鎖 + 密碼救援與總授權鎖定 -->
       <div class="panel">
         <div class="panel-title">
-          <span>🛡️ 遠端密碼救援 & 系統總授權控制</span>
+          <span>🛡️ 首次裝置綁定鎖 & 遠端授權控制</span>
+        </div>
+
+        <!-- 任務3：首次啟動 Super Admin 裝置綁定鎖動態改碼與撤銷 -->
+        <div style="background:#0f172a; border:1px solid rgba(245,158,11,0.45); padding:16px; border-radius:12px; margin-bottom:16px;">
+          <h4 style="font-size:15px; color:var(--accent); margin-bottom:6px;">🔐 首次啟動「裝置綁定鎖」動態授權管理</h4>
+          <p style="font-size:12px; color:var(--sub); line-height:1.5; margin-bottom:10px;">
+            當新平板或新電腦第一次開啟店家後台 (<code>admin.html</code>) 時，必須先輸入此處設定的「啟用授權碼」才能永久綁定該設備。
+          </p>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="text" id="activationPinInput" class="input-dark" style="margin:0; flex:1; font-weight:bold; color:var(--accent);" placeholder="設定啟用授權碼 (預設 888888)" value="888888">
+            <button class="btn btn-gold" onclick="saveActivationPin()">💾 更新啟用碼</button>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#020617; padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
+            <span style="font-size:12px; color:var(--sub);">目前綁定授權版本：<strong id="dispDeviceEpoch" style="color:var(--accent);">v1</strong></span>
+            <button class="btn btn-red" style="padding:6px 12px; font-size:12px;" onclick="revokeAllBoundDevices()">🚫 遠端撤銷所有已綁定設備</button>
+          </div>
         </div>
 
         <!-- 第二招：遠端強制重置密碼 -->
@@ -368,6 +384,13 @@
           document.getElementById("chk_enable_pro_report").checked = !!d.enable_pro_report;
           document.getElementById("chk_enable_csv_clean").checked = !!d.enable_csv_clean;
           if (d.lock_reason) document.getElementById("lockReasonInput").value = d.lock_reason;
+          if (document.getElementById("activationPinInput")) {
+            document.getElementById("activationPinInput").value = d.activation_pin || "888888";
+          }
+          window.currentDeviceEpoch = Number(d.device_epoch || 1);
+          if (document.getElementById("dispDeviceEpoch")) {
+            document.getElementById("dispDeviceEpoch").innerText = "v" + window.currentDeviceEpoch;
+          }
 
           const badge = document.getElementById("dispLicenseBadge");
           badge.innerText = isActive ? "🟢 正常授權中" : "🔴 已停權鎖定";
@@ -379,11 +402,42 @@
             enable_printer: false,
             enable_pro_report: false,
             enable_csv_clean: false,
+            activation_pin: "888888",
+            device_epoch: 1,
             lock_reason: "本系統授權目前已暫停或到期，請聯繫系統服務商辦理續約開通。"
           }, { merge: true });
         }
       });
     }
+
+    // 儲存首次裝置啟用授權碼
+    window.saveActivationPin = async function() {
+      if (!activeDb) return;
+      const newPin = document.getElementById("activationPinInput").value.trim();
+      if (!newPin || newPin.length < 4) return showToast("⚠️ 啟用授權碼請至少設定 4 位數！");
+      try {
+        await activeDb.collection("system_settings").doc("license").set({
+          activation_pin: newPin,
+          updated_at: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        showToast(`🔑 首次裝置啟用授權碼已更新為：${newPin}`);
+      } catch (e) { showToast("更新失敗"); }
+    };
+
+    // 遠端撤銷所有已綁定裝置
+    window.revokeAllBoundDevices = function() {
+      openSuperConfirm("確定要遠端撤銷該店家所有已綁定的平板與電腦嗎？\n執行後，店家所有設備都會立即跳回「首次啟用驗證」畫面，必須重新由您輸入啟用授權碼才能使用！", async (yes) => {
+        if (!yes || !activeDb) return;
+        const nextEpoch = (window.currentDeviceEpoch || 1) + 1;
+        try {
+          await activeDb.collection("system_settings").doc("license").set({
+            device_epoch: nextEpoch,
+            updated_at: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          showToast(`🚫 已撤銷所有設備綁定 (升級至 v${nextEpoch})！`);
+        } catch (e) { showToast("撤銷失敗"); }
+      });
+    };
 
     // 切換任一進階功能開關
     window.updateFeatureFlag = async function(field, val) {
