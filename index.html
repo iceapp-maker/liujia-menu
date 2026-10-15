@@ -389,7 +389,7 @@
 
       <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #f0f0f0; text-align: center;">
         <p style="color: #718096; font-size: 13px;" id="dashboardStoreName">劉家川味牛肉麵</p>
-        <p style="color: #a0aec0; font-size: 11px; margin-top: 4px;">系統版本: v3.5 - 語法與標籤防呆修復</p>
+        <p style="color: #a0aec0; font-size: 11px; margin-top: 4px;">系統版本: v3.6 - 國定假日與自訂店休公告</p>
       </div>
     </div>
   </div>
@@ -872,18 +872,33 @@
       const overlay = document.getElementById("closedOverlay");
       if (!storeSettings || !overlay) return;
 
+      // 1. 檢查手動開啟之店休開關 (支援自訂國定假日、提早售完、臨時店休文案)
       if (storeSettings.manual_close) {
-        document.getElementById("closedTitle").innerText = "🛑 臨時店休中";
-        document.getElementById("closedMessage").innerText = "抱歉，本店目前暫停接單，感謝您的體諒！";
+        document.getElementById("closedTitle").innerText = storeSettings.close_title || "🛑 暫停營業中";
+        document.getElementById("closedMessage").innerText = storeSettings.close_reason || "抱歉，本店目前暫停接單，感謝您的體諒！";
         overlay.style.display = "flex";
         return;
       }
 
       const now = new Date();
+      const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      // 2. 檢查是否為預排之「特定國定假日 / 特休日期」
+      if (Array.isArray(storeSettings.special_holidays)) {
+        const matchedHoliday = storeSettings.special_holidays.find(h => h.date === todayDateStr);
+        if (matchedHoliday) {
+          document.getElementById("closedTitle").innerText = "🎉 國定假日 / 特定公休";
+          document.getElementById("closedMessage").innerText = `【今日公休公告】\n${matchedHoliday.note || '本店今日適逢國定假日公休一天，期待下次為您服務！'}`;
+          overlay.style.display = "flex";
+          return;
+        }
+      }
+
+      // 3. 檢查每週固定公休日
       const day = now.getDay();
       if (Array.isArray(storeSettings.closed_days) && storeSettings.closed_days.includes(day)) {
-        document.getElementById("closedTitle").innerText = "📅 今日公休";
-        document.getElementById("closedMessage").innerText = "本店今日為固定公休日，期待下次為您服務！";
+        document.getElementById("closedTitle").innerText = "📅 今日固定公休";
+        document.getElementById("closedMessage").innerText = "本店今日為每週固定公休日，期待下次為您服務！";
         overlay.style.display = "flex";
         return;
       }
