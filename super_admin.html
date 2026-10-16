@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<!-- [Section 1: HTML Head 與外部匯入] Start -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👑 POS 雲端授權與進階功能總控台 (Super Admin v4.3 雲端同步版)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+</head>
+<!-- [Section 1: HTML Head 與外部匯入] End -->
+
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+<!-- [Section 2: 總部登入鎖、頂部導覽與新增店家彈窗] Start -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 px-6 py-3 rounded-full font-black text-sm shadow-2xl hidden z-50">提示</div>
+
+  <!-- 1. 總部最高權限登入畫面 -->
+  <div id="superLoginScreen" class="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-40">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+      <div class="text-5xl mb-3">👑</div>
+      <h1 class="text-xl font-black text-amber-400 mb-1">開發商總部超級中控台</h1>
+      <p class="text-xs text-slate-400 mb-6">跨裝置雲端總庫同步版（預設總部密碼：888888）</p>
+      <input type="password" id="superPinInput" placeholder="••••••" class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-center text-2xl font-black tracking-widest text-amber-400 mb-4 focus:outline-none focus:border-amber-400">
+      <button onclick="loginSuperAdmin()" id="btnSuperLogin" class="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-base shadow-lg transition">
+        解鎖並載入雲端店家總庫
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. ➕ 新增合作店家彈窗 (含 Google 帳號密碼紀錄) -->
+  <div id="addClientModal" class="fixed inset-0 bg-black/75 hidden items-center justify-center p-4 z-50 backdrop-blur-sm">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-lg font-black text-amber-400">➕ 新增合作店家 (自動同步至總部雲端)</h3>
+        <button onclick="closeAddClientModal()" class="text-slate-400 hover:text-white text-xl font-bold">✕</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">店家識別名稱 (連線後會自動與店內最新名稱同步)</label>
+          <input type="text" id="newClientName" placeholder="例：小吃測試店 / 老王排骨飯" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm">
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-amber-400 mb-1">Firebase Project ID *</label>
+            <input type="text" id="newClientProjectId" placeholder="例：eat-order-test" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm">
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400 mb-1">Firebase API Key *</label>
+            <input type="text" id="newClientApiKey" placeholder="例：AIzaSy..." class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm">
+          </div>
+        </div>
+        <div class="border-t border-slate-800 pt-3 mt-2">
+          <div class="text-xs font-extrabold text-blue-400 mb-2">🔑 店家提供之 Google / Firebase 登入帳密紀錄</div>
+          <div class="space-y-2.5">
+            <div>
+              <label class="block font-bold text-slate-400 mb-1">Google 帳號 (Email)</label>
+              <input type="text" id="newClientGoogleEmail" placeholder="例：laowang888@gmail.com" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-400 mb-1">Google 密碼</label>
+              <input type="text" id="newClientGooglePwd" placeholder="輸入該 Google 帳號之密碼" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-400 mb-1">總部維運備註 (如 GitHub 網址 / 老闆手機)</label>
+              <input type="text" id="newClientAdminMemo" placeholder="例：https://iceapp-maker.github.io/..." class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button onclick="closeAddClientModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm">取消</button>
+        <button onclick="saveAndSwitchNewClient()" class="flex-[2] py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm shadow-lg">
+          ☁️ 儲存至雲端並切換至此店家
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 總部主控台內容 -->
+  <div id="superMainPanel" class="hidden min-h-screen flex flex-col">
+    <!-- 頂部深色導覽列 -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">👑</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-black text-amber-400 tracking-wide">POS 雲端授權與進階功能總控台</h1>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-950 text-emerald-400 border border-emerald-700">☁️ 跨裝置雲端同步中</span>
+          </div>
+          <p class="text-xs text-slate-400">遠端即時控制旗下店家之「進階付費模組」、「系統總授權鎖」、「密碼救援」與「Google 帳密備忘」</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <span class="text-xs font-bold text-slate-400">目前控管店家 (<span id="totalClientCount">1</span> 店)：</span>
+        <select id="clientSelector" onchange="switchClientByIndex(this.value)" class="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold text-sm focus:outline-none focus:border-amber-400"></select>
+        <button onclick="openAddClientModal()" class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow transition">
+          ➕ 新增客戶店家
+        </button>
+        <button onclick="deleteCurrentClient()" id="btnDeleteClient" class="px-2.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 font-bold text-xs hidden" title="從雲端總庫移除此店">
+          🗑️ 移除此店
+        </button>
+      </div>
+    </header>
+
+    <main class="max-w-5xl w-full mx-auto p-6 space-y-6 flex-1">
+      <!-- 頂部店家資訊卡 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-wrap justify-between items-center gap-4 shadow-xl">
+        <div>
+          <div class="text-xs font-bold text-slate-400 mb-1">
+            連線資料庫 Project ID：<span id="displayProjectId" class="text-amber-400 font-mono">liujia-689d7</span>
+          </div>
+          <h2 id="clientStoreName" class="text-2xl font-black text-white">載入中...</h2>
+          <p id="clientStoreMeta" class="text-xs text-slate-400 mt-1">📞 -- ｜ 📍 --</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="bg-slate-950 border border-slate-800 px-4 py-2.5 rounded-xl text-center">
+            <div class="text-[11px] text-slate-400">目前後台密碼</div>
+            <div id="clientCurrentPin" class="text-lg font-black text-amber-400">----</div>
+          </div>
+          <div class="bg-slate-950 border border-slate-800 px-4 py-2.5 rounded-xl text-center">
+            <div class="text-[11px] text-slate-400">授權狀態</div>
+            <div id="clientLicenseBadge" class="text-sm font-black text-emerald-400">🟢 正常授權中</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🔑 該店專屬 Google / Firebase 帳號密碼與維運備忘錄 -->
+      <div class="bg-slate-900 border border-blue-500/30 rounded-2xl p-5 shadow-xl">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🔑</span>
+            <div>
+              <h3 class="text-sm font-black text-blue-400">該店專屬 Google / Firebase 登入帳號密碼備忘錄</h3>
+              <p class="text-[11px] text-slate-400">此區塊資料已同步儲存於「總部雲端名單總庫」，任何裝置登入總控台皆可隨時查閱</p>
+            </div>
+          </div>
+          <button onclick="saveCurrentClientAccountMemo()" class="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow">
+            ☁️ 儲存帳密與備註至雲端
+          </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-400 mb-1">📧 Google 登入帳號 (Email)</label>
+            <input type="text" id="memoGoogleEmail" placeholder="尚未記錄 (例: xxx@gmail.com)" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-400 mb-1">🔒 Google 登入密碼</label>
+            <div class="relative flex items-center">
+              <input type="password" id="memoGooglePwd" placeholder="尚未記錄密碼" class="w-full px-3 py-2 pr-14 rounded-xl bg-slate-950 border border-slate-700 text-amber-300 font-mono text-sm focus:outline-none focus:border-blue-400">
+              <button type="button" onclick="toggleMemoPwdVisibility()" id="btnTogglePwd" class="absolute right-2 px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white text-[11px] font-bold">
+                👁️ 顯示
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-400 mb-1">📝 維運備註 (GitHub 網址 / 老闆聯絡方式)</label>
+            <input type="text" id="memoAdminNote" placeholder="例: GitHub 專案名 / 老闆娘 Line" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-blue-400">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 左欄：進階付費模組開關 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-base font-black text-amber-400">💎 進階付費模組開關 (Feature Flags)</h3>
+            <button onclick="enableAllProFeatures()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow">
+              ⚡ 一鍵全開通測試
+            </button>
+          </div>
+
+          <label class="flex items-center justify-between p-4 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700">
+            <div class="pr-3">
+              <div class="font-extrabold text-sm text-white">🖨️ 進階 A：廚房小白單 / 外帶貼紙列印</div>
+              <div class="text-xs text-slate-400 mt-1">開啟後，店家接單卡片與已結單會立即出現「🖨️ 單據」按鈕，支援 58mm/80mm 大字預覽與列印。</div>
+            </div>
+            <input type="checkbox" id="flag_printer" onchange="updateFeatureFlag('enable_printer', this.checked)" class="w-6 h-6 accent-amber-500">
+          </label>
+
+          <label class="flex items-center justify-between p-4 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700">
+            <div class="pr-3">
+              <div class="font-extrabold text-sm text-white">📈 進階 B：完整週/月報表 & 解除 5 日限制</div>
+              <div class="text-xs text-slate-400 mt-1">關閉時僅顯示近 5 日報表；開啟後自動解鎖全歷史天數，並於報表頁出現「日 / 週 / 月」切換鈕與客單價統計。</div>
+            </div>
+            <input type="checkbox" id="flag_pro_report" onchange="updateFeatureFlag('enable_pro_report', this.checked)" class="w-6 h-6 accent-amber-500">
+          </label>
+
+          <label class="flex items-center justify-between p-4 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700">
+            <div class="pr-3">
+              <div class="font-extrabold text-sm text-white">📥 進階 C：Excel (CSV) 帳務匯出 & 雲端清理</div>
+              <div class="text-xs text-slate-400 mt-1">開啟後，店家報表頁上方會出現「📥 匯出 Excel」與「🧹 清理 30 天前雲端舊單」按鈕。</div>
+            </div>
+            <input type="checkbox" id="flag_csv_clean" onchange="updateFeatureFlag('enable_csv_clean', this.checked)" class="w-6 h-6 accent-amber-500">
+          </label>
+
+          <div class="bg-blue-950/40 border border-blue-800/50 rounded-xl p-3 text-xs text-blue-300 leading-relaxed">
+            💡 <strong>即時同步提示：</strong>您在此處打勾或取消，店家的 <code class="text-white">admin.html</code> 畫面會在 <strong>0.5 秒內自動長出或隱藏</strong>對應功能按鈕，完全不需重新整理網頁！
+          </div>
+        </div>
+
+        <!-- 右欄：首次裝置綁定鎖控制 + 遠端密碼救援 + 總授權開關 -->
+        <div class="space-y-6">
+          <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 space-y-4 shadow-xl">
+            <h3 class="text-base font-black text-amber-400 border-b border-slate-800 pb-2">🔐 首次啟動「裝置綁定鎖」動態授權管理</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">當新平板或新電腦第一次開啟店家後台 (<code class="text-slate-200">admin.html</code>) 時，必須先輸入此處設定的「啟用授權碼」才能永久綁定該設備。</p>
+            <div class="flex gap-2">
+              <input type="text" id="activationPinSetting" placeholder="設定啟用授權碼 (例: 888888)" class="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-amber-300 font-mono font-bold text-sm">
+              <button onclick="saveActivationPin()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs whitespace-nowrap">
+                💾 更新啟用碼
+              </button>
+            </div>
+            <div class="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div class="text-xs text-slate-300">目前綁定授權版本：<strong id="deviceEpochDisplay" class="text-amber-400">v1</strong></div>
+              <button onclick="revokeAllBoundDevices()" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs shadow">
+                🚫 遠端撤銷所有已綁定設備
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+            <h3 class="text-base font-black text-blue-400 border-b border-slate-800 pb-2">🛡️ 遠端密碼救援 & 系統總授權控制</h3>
+
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <div class="font-extrabold text-sm text-white mb-1">🔄 店家忘記密碼・一鍵遠端救援</div>
+              <p class="text-xs text-slate-400 mb-3">當店家老闆忘記自己修改的後台密碼時，點擊下方按鈕可立即將該店家的後台密碼強制洗回預設的 <strong class="text-white">1111</strong>。</p>
+              <button onclick="forceResetMerchantPin()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow">
+                🔄 立即將該店後台密碼強制重置為 1111
+              </button>
+            </div>
+
+            <div class="bg-rose-950/40 p-4 rounded-xl border border-rose-800/60 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-extrabold text-sm text-rose-300">🟢 系統總授權開關 (License Active)</div>
+                  <div class="text-xs text-rose-400/80">取消勾選後，該店家的前台與後台將立即跳出全螢幕鎖定遮罩。</div>
+                </div>
+                <input type="checkbox" id="flag_license_active" onchange="updateFeatureFlag('license_active', this.checked)" class="w-6 h-6 accent-emerald-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-rose-300 mb-1">停權鎖定畫面顯示原因：</label>
+                <input type="text" id="suspendReasonInput" value="本系統授權目前已暫停或到期，請聯繫系統服務商辦理續約開通。" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-rose-800 text-xs text-white mb-2">
+                <button onclick="saveSuspendReason()" class="w-full py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs">
+                  💾 更新停權提示文字
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+<!-- [Section 2: 總部登入鎖、頂部導覽與新增店家彈窗] End -->
+
+<!-- [Section 3: JS 總部雲端總庫同步、多店切換與帳密備忘邏輯] Start -->
+  <script>
+    // 總部主資料庫 (Master DB)：負責統一存放所有合作客戶名單，確保跨裝置/跨瀏覽器 100% 同步
+    const MASTER_HQ_CONFIG = {
+      apiKey: "AIzaSyAm2HTW9fmse5lXnzrkMyEQQYZpAzQoHD4",
+      authDomain: "liujia-689d7.firebaseapp.com",
+      projectId: "liujia-689d7"
+    };
+
+    const DEFAULT_CLIENT = {
+      name: "大飯桶小吃",
+      projectId: "liujia-689d7",
+      apiKey: "AIzaSyAm2HTW9fmse5lXnzrkMyEQQYZpAzQoHD4",
+      googleEmail: "",
+      googlePwd: "",
+      adminMemo: ""
+    };
+
+    // 初始化總部 Master App
+    let masterApp = firebase.apps.find(a => a.name === "MASTER_HQ_APP");
+    if (!masterApp) {
+      masterApp = firebase.initializeApp(MASTER_HQ_CONFIG, "MASTER_HQ_APP");
+    }
+    const masterDb = firebase.firestore(masterApp);
+
+    let clientList = [];
+    let currentClientIdx = 0;
+    let currentDb = null;
+    let unsubStore = null;
+    let unsubAdmin = null;
+    let unsubLicense = null;
+    let unsubMemo = null;
+    let currentDeviceEpoch = 1;
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.innerText = msg;
+      t.classList.remove("hidden");
+      setTimeout(() => t.classList.add("hidden"), 2800);
+    }
+
+    // 收集舊版存放在本機 localStorage 的名單（自動遷移合併上雲端，防止舊資料遺失）
+    function getLocalLegacyClients() {
+      let legacy = [];
+      ["pos_super_admin_clients_v2", "pos_super_admin_clients", "super_admin_clients", "liujia_super_clients"].forEach(k => {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) legacy.push(...parsed);
+          }
+        } catch (e) {}
+      });
+      return legacy;
+    }
+
+    // 將最新客戶清單同步寫入「總部雲端總庫」與本機快取
+    async function syncClientListToMasterCloud() {
+      try {
+        localStorage.setItem("pos_super_admin_clients_v2", JSON.stringify(clientList));
+      } catch (e) {}
+      try {
+        await masterDb.collection("system_settings").doc("super_admin_clients").set({
+          clients: clientList,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch (e) {
+        console.error("Master Cloud Sync Error:", e);
+      }
+    }
+
+    function renderClientSelector() {
+      const sel = document.getElementById("clientSelector");
+      const countEl = document.getElementById("totalClientCount");
+      if (countEl) countEl.innerText = clientList.length;
+      if (!sel) return;
+
+      sel.innerHTML = clientList.map((c, idx) => `
+        <option value="${idx}" ${idx === currentClientIdx ? 'selected' : ''}>
+          ${c.name || '未命名店家'} (${c.projectId})
+        </option>
+      `).join('');
+
+      const delBtn = document.getElementById("btnDeleteClient");
+      if (delBtn) {
+        delBtn.classList.toggle("hidden", clientList.length <= 1);
+      }
+    }
+
+    window.loginSuperAdmin = async function() {
+      const pin = document.getElementById("superPinInput").value.trim();
+      if (pin !== "888888") {
+        return showToast("❌ 總部密碼錯誤！(預設 888888)");
+      }
+      const btn = document.getElementById("btnSuperLogin");
+      btn.innerText = "正在從雲端載入店家總庫...";
+
+      try {
+        // 1. 先從總部雲端讀取客戶清單
+        const masterDoc = await masterDb.collection("system_settings").doc("super_admin_clients").get();
+        let cloudClients = (masterDoc.exists && Array.isArray(masterDoc.data().clients)) ? masterDoc.data().clients : [];
+
+        // 2. 檢查本機是否有之前新增但尚未上雲端的店家，自動合併
+        const localClients = getLocalLegacyClients();
+        let mergedMap = new Map();
+
+        // 確保預設店一定存在
+        mergedMap.set(DEFAULT_CLIENT.projectId, { ...DEFAULT_CLIENT });
+
+        localClients.forEach(c => {
+          if (c && c.projectId && c.apiKey) {
+            mergedMap.set(c.projectId, { ...mergedMap.get(c.projectId), ...c });
+          }
+        });
+        cloudClients.forEach(c => {
+          if (c && c.projectId && c.apiKey) {
+            const existing = mergedMap.get(c.projectId) || {};
+            mergedMap.set(c.projectId, {
+              ...existing,
+              ...c,
+              googleEmail: c.googleEmail || existing.googleEmail || "",
+              googlePwd: c.googlePwd || existing.googlePwd || "",
+              adminMemo: c.adminMemo || existing.adminMemo || ""
+            });
+          }
+        });
+
+        clientList = Array.from(mergedMap.values());
+        await syncClientListToMasterCloud();
+
+        // 3. 持續即時監聽總部雲端名單變化（支援多台電腦同時開啟即時同步）
+        masterDb.collection("system_settings").doc("super_admin_clients").onSnapshot(doc => {
+          if (doc.exists && Array.isArray(doc.data().clients) && doc.data().clients.length > 0) {
+            const currentPid = clientList[currentClientIdx]?.projectId;
+            clientList = doc.data().clients;
+            const foundIdx = clientList.findIndex(c => c.projectId === currentPid);
+            currentClientIdx = foundIdx >= 0 ? foundIdx : 0;
+            renderClientSelector();
+          }
+        });
+
+        document.getElementById("superLoginScreen").classList.add("hidden");
+        document.getElementById("superMainPanel").classList.remove("hidden");
+        renderClientSelector();
+        connectToClientDatabase(0);
+      } catch (e) {
+        console.error(e);
+        showToast("雲端總庫讀取失敗，改用本機快取啟動");
+        clientList = [{ ...DEFAULT_CLIENT }];
+        document.getElementById("superLoginScreen").classList.add("hidden");
+        document.getElementById("superMainPanel").classList.remove("hidden");
+        renderClientSelector();
+        connectToClientDatabase(0);
+      } finally {
+        btn.innerText = "解鎖並載入雲端店家總庫";
+      }
+    };
+
+    document.getElementById("superPinInput").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") loginSuperAdmin();
+    });
+
+    window.switchClientByIndex = function(idxStr) {
+      const idx = parseInt(idxStr, 10);
+      if (isNaN(idx) || !clientList[idx]) return;
+      connectToClientDatabase(idx);
+    };
+
+    function connectToClientDatabase(idx) {
+      currentClientIdx = idx;
+      const client = clientList[idx];
+      renderClientSelector();
+
+      if (unsubStore) { unsubStore(); unsubStore = null; }
+      if (unsubAdmin) { unsubAdmin(); unsubAdmin = null; }
+      if (unsubLicense) { unsubLicense(); unsubLicense = null; }
+      if (unsubMemo) { unsubMemo(); unsubMemo = null; }
+
+      document.getElementById("displayProjectId").innerText = client.projectId;
+      document.getElementById("clientStoreName").innerText = client.name || "連線讀取中...";
+      document.getElementById("clientStoreMeta").innerText = "📞 讀取中... ｜ 📍 讀取中...";
+
+      document.getElementById("memoGoogleEmail").value = client.googleEmail || "";
+      document.getElementById("memoGooglePwd").value = client.googlePwd || "";
+      document.getElementById("memoAdminNote").value = client.adminMemo || "";
+
+      const appName = "super_app_" + client.projectId.replace(/[^a-zA-Z0-9_]/g, "_");
+      let targetApp = firebase.apps.find(a => a.name === appName);
+      if (!targetApp) {
+        targetApp = firebase.initializeApp({
+          apiKey: client.apiKey,
+          authDomain: `${client.projectId}.firebaseapp.com`,
+          projectId: client.projectId
+        }, appName);
+      }
+      currentDb = firebase.firestore(targetApp);
+
+      initSuperListeners();
+    }
+
+    function initSuperListeners() {
+      if (!currentDb) return;
+
+      // 1. 監聽店家基本資訊，並自動將最新店名同步回總部雲端名單
+      unsubStore = currentDb.collection("system_settings").doc("store_info").onSnapshot(doc => {
+        if (doc.exists) {
+          const d = doc.data();
+          const latestStoreName = (d.store_name || "").trim();
+          document.getElementById("clientStoreName").innerText = latestStoreName || "未命名店家";
+          document.getElementById("clientStoreMeta").innerText = `📞 ${d.store_phone || '--'} ｜ 📍 ${d.store_address || '--'}`;
+
+          if (latestStoreName && clientList[currentClientIdx].name !== latestStoreName) {
+            clientList[currentClientIdx].name = latestStoreName;
+            renderClientSelector();
+            syncClientListToMasterCloud();
+          }
+        } else {
+          document.getElementById("clientStoreName").innerText = clientList[currentClientIdx].name || "新店家 (尚未設定店名)";
+          document.getElementById("clientStoreMeta").innerText = "📞 尚未設定 ｜ 📍 尚未設定";
+        }
+      });
+
+      // 2. 監聽日常後台密碼
+      unsubAdmin = currentDb.collection("system_settings").doc("admin").onSnapshot(doc => {
+        if (doc.exists) {
+          document.getElementById("clientCurrentPin").innerText = doc.data().pin || "1111";
+        } else {
+          document.getElementById("clientCurrentPin").innerText = "1111";
+        }
+      });
+
+      // 3. 監聽該店 super_memo 節點
+      unsubMemo = currentDb.collection("system_settings").doc("super_memo").onSnapshot(doc => {
+        if (doc.exists) {
+          const m = doc.data();
+          const cur = clientList[currentClientIdx];
+          let changed = false;
+          if (m.googleEmail && m.googleEmail !== cur.googleEmail) { cur.googleEmail = m.googleEmail; changed = true; }
+          if (m.googlePwd && m.googlePwd !== cur.googlePwd) { cur.googlePwd = m.googlePwd; changed = true; }
+          if (m.adminMemo && m.adminMemo !== cur.adminMemo) { cur.adminMemo = m.adminMemo; changed = true; }
+          if (changed) syncClientListToMasterCloud();
+
+          document.getElementById("memoGoogleEmail").value = cur.googleEmail || "";
+          document.getElementById("memoGooglePwd").value = cur.googlePwd || "";
+          document.getElementById("memoAdminNote").value = cur.adminMemo || "";
+        }
+      });
+
+      // 4. 監聽授權與進階功能開關
+      unsubLicense = currentDb.collection("system_settings").doc("license").onSnapshot(doc => {
+        if (!doc.exists) {
+          currentDb.collection("system_settings").doc("license").set({
+            license_active: true,
+            enable_printer: false,
+            enable_pro_report: false,
+            enable_csv_clean: false,
+            activation_pin: "888888",
+            device_epoch: 1
+          });
+          return;
+        }
+        const d = doc.data();
+        const isActive = d.license_active !== false;
+        document.getElementById("flag_license_active").checked = isActive;
+        document.getElementById("flag_printer").checked = Boolean(d.enable_printer);
+        document.getElementById("flag_pro_report").checked = Boolean(d.enable_pro_report);
+        document.getElementById("flag_csv_clean").checked = Boolean(d.enable_csv_clean);
+
+        if (d.suspend_reason) document.getElementById("suspendReasonInput").value = d.suspend_reason;
+        document.getElementById("activationPinSetting").value = d.activation_pin || "888888";
+        currentDeviceEpoch = Number(d.device_epoch) || 1;
+        document.getElementById("deviceEpochDisplay").innerText = `v${currentDeviceEpoch}`;
+
+        const badge = document.getElementById("clientLicenseBadge");
+        if (isActive) {
+          badge.innerText = "🟢 正常授權中";
+          badge.className = "text-sm font-black text-emerald-400";
+        } else {
+          badge.innerText = "🔴 已停權鎖定";
+          badge.className = "text-sm font-black text-rose-500";
+        }
+      });
+    }
+
+    // 儲存該店專屬 Google 帳密與維運備註 (同步寫入總部雲端總庫 + 該店 super_memo)
+    window.saveCurrentClientAccountMemo = async function() {
+      const email = document.getElementById("memoGoogleEmail").value.trim();
+      const pwd = document.getElementById("memoGooglePwd").value.trim();
+      const note = document.getElementById("memoAdminNote").value.trim();
+
+      clientList[currentClientIdx].googleEmail = email;
+      clientList[currentClientIdx].googlePwd = pwd;
+      clientList[currentClientIdx].adminMemo = note;
+
+      await syncClientListToMasterCloud();
+
+      if (currentDb) {
+        try {
+          await currentDb.collection("system_settings").doc("super_memo").set({
+            googleEmail: email,
+            googlePwd: pwd,
+            adminMemo: note,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (e) {}
+      }
+      showToast("☁️ 已成功儲存至總部雲端總庫，所有裝置皆可同步查閱！");
+    };
+
+    window.toggleMemoPwdVisibility = function() {
+      const input = document.getElementById("memoGooglePwd");
+      const btn = document.getElementById("btnTogglePwd");
+      if (input.type === "password") {
+        input.type = "text";
+        btn.innerText = "🙈 隱藏";
+      } else {
+        input.type = "password";
+        btn.innerText = "👁️ 顯示";
+      }
+    };
+
+    window.openAddClientModal = function() {
+      document.getElementById("newClientName").value = "";
+      document.getElementById("newClientProjectId").value = "";
+      document.getElementById("newClientApiKey").value = "";
+      document.getElementById("newClientGoogleEmail").value = "";
+      document.getElementById("newClientGooglePwd").value = "";
+      document.getElementById("newClientAdminMemo").value = "";
+      document.getElementById("addClientModal").classList.remove("hidden");
+      document.getElementById("addClientModal").classList.add("flex");
+    };
+
+    window.closeAddClientModal = function() {
+      document.getElementById("addClientModal").classList.add("hidden");
+      document.getElementById("addClientModal").classList.remove("flex");
+    };
+
+    window.saveAndSwitchNewClient = async function() {
+      const name = document.getElementById("newClientName").value.trim() || "新合作店家";
+      const projectId = document.getElementById("newClientProjectId").value.trim();
+      const apiKey = document.getElementById("newClientApiKey").value.trim();
+      const googleEmail = document.getElementById("newClientGoogleEmail").value.trim();
+      const googlePwd = document.getElementById("newClientGooglePwd").value.trim();
+      const adminMemo = document.getElementById("newClientAdminMemo").value.trim();
+
+      if (!projectId || !apiKey) {
+        return showToast("⚠️ 請填寫 Firebase Project ID 與 API Key！");
+      }
+
+      let targetIdx = clientList.findIndex(c => c.projectId === projectId);
+      if (targetIdx >= 0) {
+        clientList[targetIdx] = { name, projectId, apiKey, googleEmail, googlePwd, adminMemo };
+      } else {
+        clientList.push({ name, projectId, apiKey, googleEmail, googlePwd, adminMemo });
+        targetIdx = clientList.length - 1;
+      }
+
+      await syncClientListToMasterCloud();
+      closeAddClientModal();
+      connectToClientDatabase(targetIdx);
+
+      if (currentDb && (googleEmail || googlePwd || adminMemo)) {
+        try {
+          await currentDb.collection("system_settings").doc("super_memo").set({
+            googleEmail, googlePwd, adminMemo
+          }, { merge: true });
+        } catch (e) {}
+      }
+      showToast(`☁️ 已將「${name}」永久存入雲端總庫並切換連線！`);
+    };
+
+    window.deleteCurrentClient = async function() {
+      if (clientList.length <= 1) return showToast("至少需保留一家預設店家！");
+      const cur = clientList[currentClientIdx];
+      if (!confirm(`確定要從雲端總庫移除「${cur.name} (${cur.projectId})」嗎？\n（註：這只會從總部選單移除，不會刪除該店的營業資料）`)) return;
+      clientList.splice(currentClientIdx, 1);
+      await syncClientListToMasterCloud();
+      connectToClientDatabase(0);
+      showToast("🗑️ 已從雲端總庫移除該店家");
+    };
+
+    window.updateFeatureFlag = async function(key, val) {
+      if (!currentDb) return;
+      await currentDb.collection("system_settings").doc("license").set({ [key]: val }, { merge: true });
+      showToast(`⚡ 已同步更新權限：${key} = ${val}`);
+    };
+
+    window.enableAllProFeatures = async function() {
+      if (!currentDb) return;
+      await currentDb.collection("system_settings").doc("license").set({
+        license_active: true,
+        enable_printer: true,
+        enable_pro_report: true,
+        enable_csv_clean: true
+      }, { merge: true });
+      showToast("🎉 已一鍵開通該店所有進階模組！");
+    };
+
+    window.forceResetMerchantPin = async function() {
+      if (!currentDb) return;
+      await currentDb.collection("system_settings").doc("admin").set({
+        pin: "1111",
+        force_reset_pin: true
+      }, { merge: true });
+      showToast("🔄 已將該店後台日常密碼強制重置為 1111！");
+    };
+
+    window.saveSuspendReason = async function() {
+      if (!currentDb) return;
+      const reason = document.getElementById("suspendReasonInput").value.trim();
+      await currentDb.collection("system_settings").doc("license").set({ suspend_reason: reason }, { merge: true });
+      showToast("💾 停權提示文字已更新！");
+    };
+
+    window.saveActivationPin = async function() {
+      if (!currentDb) return;
+      const newActPin = document.getElementById("activationPinSetting").value.trim();
+      if (!newActPin || newActPin.length < 4) return showToast("啟用授權碼至少需 4 位數！");
+      await currentDb.collection("system_settings").doc("license").set({ activation_pin: newActPin }, { merge: true });
+      showToast(`🔑 首次裝置啟用授權碼已更新為：${newActPin}`);
+    };
+
+    window.revokeAllBoundDevices = async function() {
+      if (!currentDb) return;
+      const nextEpoch = currentDeviceEpoch + 1;
+      await currentDb.collection("system_settings").doc("license").set({ device_epoch: nextEpoch }, { merge: true });
+      showToast(`🚫 已撤銷所有已綁定設備（升級至 v${nextEpoch}），店家設備需重新輸入啟用碼！`);
+    };
+  </script>
+</body>
+</html>
+<!-- [Section 3: JS 總部雲端總庫同步、多店切換與帳密備忘邏輯] End -->
