@@ -3,6 +3,9 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title id="pageTitle">劉家川味牛肉麵 - 線上點餐</title>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
@@ -351,7 +354,7 @@
         <p><strong>💡 顧客須知：</strong></p>
         <p id="modalStoreNotice" style="white-space: pre-line; color: #555; margin-top: 4px;">歡迎光臨！內用顧客請直接掃描桌號點餐，餐點現點現做請耐心等候。</p>
         <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #f0f0f0; text-align: center; color: #a0aec0; font-size: 11px;">
-          系統版本: v3.8 - 外帶電話必填與智慧記憶版
+          系統版本: v4.1 - 台灣手機10碼與市話防呆加固版
         </div>
       </div>
     </div>
@@ -367,7 +370,7 @@
     <!-- 菜單底部常駐版本與店名資訊 -->
     <div style="text-align: center; padding: 18px 16px 10px; color: #a0aec0; font-size: 12px;">
       <p id="footerStoreName" style="color: #718096; font-weight: 600;">劉家川味牛肉麵</p>
-      <p style="font-size: 11px; margin-top: 4px;">系統版本: v3.8 - 外帶電話必填與智慧記憶版</p>
+      <p style="font-size: 11px; margin-top: 4px; color: #d32f2f; font-weight: 700;">系統版本: v4.1 - 台灣手機10碼與市話防呆加固版</p>
     </div>
   </div>
 
@@ -407,7 +410,7 @@
 
       <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #f0f0f0; text-align: center;">
         <p style="color: #718096; font-size: 13px;" id="dashboardStoreName">劉家川味牛肉麵</p>
-        <p style="color: #a0aec0; font-size: 11px; margin-top: 4px;">系統版本: v3.8 - 外帶電話必填與智慧記憶版</p>
+        <p style="color: #d32f2f; font-size: 11px; font-weight: 700; margin-top: 4px;">系統版本: v4.1 - 台灣手機10碼與市話防呆加固版</p>
       </div>
     </div>
   </div>
@@ -460,7 +463,7 @@
       <div id="takeoutFields" style="display:none; background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:12px; border:1px solid #e2e8f0;">
         <p style="font-size:13px; font-weight:bold; color:#1565c0; margin-bottom:8px;">🛍️ 外帶取餐聯絡資訊 (必填，自動記憶免重填)</p>
         <input type="text" id="custName" class="input-field" placeholder="您的稱呼 *必填 (例：陳先生)" oninput="document.getElementById('takeoutErrorMsg').style.display='none'">
-        <input type="tel" id="custPhone" class="input-field" style="margin-bottom:4px;" placeholder="手機(10碼) 或 市話(7/9碼) *必填" oninput="document.getElementById('takeoutErrorMsg').style.display='none'">
+        <input type="tel" id="custPhone" class="input-field" style="margin-bottom:4px;" inputmode="numeric" maxlength="12" pattern="09\d{8}|\d{7}|0\d{8}" placeholder="手機10碼(09開頭) 或 市話7/9碼 *必填" oninput="this.value=this.value.replace(/[^0-9-]/g,''); document.getElementById('takeoutErrorMsg').style.display='none'">
         <p id="takeoutErrorMsg" style="display:none; color:#d32f2f; font-size:12px; font-weight:bold; margin-top:6px;">⚠️ 請完整填寫外帶「稱呼」與「聯絡電話」！</p>
       </div>
 
@@ -766,7 +769,14 @@
           nameInput.value = localStorage.getItem("liujia_cust_name") || "";
         }
         if (!phoneInput.value.trim()) {
-          phoneInput.value = localStorage.getItem("liujia_cust_phone") || "";
+          const savedPhone = localStorage.getItem("liujia_cust_phone") || "";
+          // 自動過濾掉舊版曾誤存的不合格電話 (例如 222 或 888)
+          if (validateTaiwanPhone(savedPhone).valid) {
+            phoneInput.value = savedPhone;
+          } else {
+            localStorage.removeItem("liujia_cust_phone");
+            phoneInput.value = "";
+          }
         }
       }
       document.getElementById("cartModal").style.display = "flex";
@@ -873,13 +883,27 @@
 
     async function submitOrderToFirebase(tagSuffix) {
       const btn = document.getElementById("submitOrderBtn");
-      btn.disabled = true;
-      btn.innerText = "⏳ 傳送訂單中...";
-
       const totalAmount = cart.reduce((s, i) => s + i.subtotal, 0);
       const note = document.getElementById("orderNote").value.trim();
       const custName = currentCleanTableName ? "" : document.getElementById("custName").value.trim();
-      const custPhone = currentCleanTableName ? "" : document.getElementById("custPhone").value.trim();
+      let custPhone = currentCleanTableName ? "" : document.getElementById("custPhone").value.trim();
+
+      // 第二道雙重硬鎖：送入 Firebase 前再次強制驗證外帶電話格式，不合規直接阻斷
+      if (!currentCleanTableName) {
+        const finalCheck = validateTaiwanPhone(custPhone);
+        if (!custName || !finalCheck.valid) {
+          const errEl = document.getElementById("takeoutErrorMsg");
+          if (errEl) {
+            errEl.innerText = "📞 攔截送單：外帶必須填寫稱呼與正確電話（手機 09 開頭 10 碼，或市話 7/9 碼）！";
+            errEl.style.display = "block";
+          }
+          return;
+        }
+        custPhone = finalCheck.cleaned;
+      }
+
+      btn.disabled = true;
+      btn.innerText = "⏳ 傳送訂單中...";
 
       let finalTableString = "外帶顧客";
       if (currentCleanTableName) {
