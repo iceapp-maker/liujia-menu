@@ -1,525 +1,606 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+<!-- [Section 1: HTML Head 與外部匯入] Start -->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>👑 開發商總部超級中控台 (Super Admin)</title>
+  <title>👑 POS 雲端授權與進階功能總控台 (Super Admin v4.2)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --border: #334155;
-      --accent: #f59e0b;
-      --green: #10b981;
-      --blue: #3b82f6;
-      --red: #ef4444;
-      --text: #f8fafc;
-      --sub: #94a3b8;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding-bottom: 60px;
-    }
-    /* 總部登入鎖 */
-    #superLoginOverlay {
-      position: fixed; inset: 0;
-      background: rgba(2, 6, 23, 0.96);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 5000; padding: 16px;
-    }
-    .login-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 30px 24px; width: 100%; max-width: 380px;
-      text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-    }
-    .input-dark {
-      width: 100%; padding: 12px 14px; background: #0f172a;
-      border: 1px solid var(--border); border-radius: 10px;
-      color: white; font-size: 15px; margin-top: 6px; margin-bottom: 14px;
-    }
-    .btn {
-      padding: 10px 16px; border-radius: 10px; border: none;
-      font-size: 14px; font-weight: bold; cursor: pointer;
-      transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    }
-    .btn-gold { background: var(--accent); color: #0f172a; }
-    .btn-green { background: var(--green); color: white; }
-    .btn-blue { background: var(--blue); color: white; }
-    .btn-red { background: var(--red); color: white; }
-    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--sub); }
-
-    /* 頂部列 */
-    .topbar {
-      background: #020617; border-bottom: 1px solid var(--border);
-      padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;
-      flex-wrap: wrap; gap: 12px;
-    }
-    .container { max-width: 1060px; margin: 24px auto; padding: 0 16px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-    .panel {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 22px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-    }
-    .panel-title {
-      font-size: 17px; font-weight: 800; color: var(--accent);
-      margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 1px solid var(--border); padding-bottom: 10px;
-    }
-
-    /* 開關卡片 */
-    .switch-row {
-      display: flex; justify-content: space-between; align-items: center;
-      background: #0f172a; border: 1px solid var(--border);
-      padding: 14px 16px; border-radius: 12px; margin-bottom: 12px;
-    }
-    .switch-info h4 { font-size: 15px; margin-bottom: 4px; color: #f1f5f9; }
-    .switch-info p { font-size: 12px; color: var(--sub); line-height: 1.4; }
-    .toggle-checkbox {
-      width: 24px; height: 24px; accent-color: var(--green); cursor: pointer; flex-shrink: 0;
-    }
-
-    #toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: var(--accent); color: #0f172a; padding: 12px 24px;
-      border-radius: 30px; font-weight: 800; font-size: 14px;
-      display: none; z-index: 6000; box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-    }
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-      display: none; align-items: center; justify-content: center; z-index: 5500; padding: 16px;
-    }
-  </style>
 </head>
-<body>
+<!-- [Section 1: HTML Head 與外部匯入] End -->
 
-  <div id="toast">提示訊息</div>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+<!-- [Section 2: 總部登入鎖、頂部導覽與新增店家彈窗] Start -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 px-6 py-3 rounded-full font-black text-sm shadow-2xl hidden z-50">提示</div>
 
-  <!-- 開發商總部安全鎖 (預設最高密碼 888888) -->
-  <div id="superLoginOverlay">
-    <div class="login-card">
-      <div style="font-size: 36px; margin-bottom: 8px;">👑</div>
-      <h2 style="margin-bottom: 6px; color: var(--accent);">開發商總部超級中控台</h2>
-      <p style="font-size: 13px; color: var(--sub); margin-bottom: 16px;">此為最高權限頁面（店家不可見）<br>預設總部通行碼：<strong style="color:#fff;">888888</strong></p>
-      <input type="password" id="masterPinInput" class="input-dark" style="text-align:center; font-size:20px; letter-spacing:6px;" placeholder="••••••">
-      <button class="btn btn-gold" style="width:100%; padding:13px; font-size:16px;" onclick="unlockSuperAdmin()">🔓 解鎖進入總控台</button>
+  <!-- 1. 總部最高權限登入畫面 -->
+  <div id="superLoginScreen" class="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-40">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+      <div class="text-5xl mb-3">👑</div>
+      <h1 class="text-xl font-black text-amber-400 mb-1">開發商總部超級中控台</h1>
+      <p class="text-xs text-slate-400 mb-6">僅限系統發行商進入（預設總部密碼：888888）</p>
+      <input type="password" id="superPinInput" placeholder="••••••" class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-center text-2xl font-black tracking-widest text-amber-400 mb-4 focus:outline-none focus:border-amber-400">
+      <button onclick="loginSuperAdmin()" class="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-base shadow-lg transition">
+        解鎖總部控制台
+      </button>
     </div>
   </div>
 
-  <!-- 新增合作店家 (多店管理) 彈窗 -->
-  <div id="addTenantModal" class="modal-overlay">
-    <div class="panel" style="width:100%; max-width:460px;">
-      <div class="panel-title">
-        <span>➕ 新增合作店家 (一店一庫連線)</span>
-        <button class="btn btn-outline" style="padding:4px 10px;" onclick="closeAddTenantModal()">✕</button>
+  <!-- 2. ➕ 新增合作店家彈窗 (含 Google 帳號密碼紀錄) -->
+  <div id="addClientModal" class="fixed inset-0 bg-black/75 hidden items-center justify-center p-4 z-50 backdrop-blur-sm">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-lg font-black text-amber-400">➕ 新增合作店家 (一店一庫連線)</h3>
+        <button onclick="closeAddClientModal()" class="text-slate-400 hover:text-white text-xl font-bold">✕</button>
       </div>
-      <label style="font-size:13px; color:var(--sub);">店家識別名稱 (例：老王排骨飯 - 永康店)</label>
-      <input type="text" id="newTenantName" class="input-dark" placeholder="輸入店家名稱">
-      <label style="font-size:13px; color:var(--sub);">Firebase Project ID *</label>
-      <input type="text" id="newTenantProjectId" class="input-dark" placeholder="例：laowang-pos-12345">
-      <label style="font-size:13px; color:var(--sub);">Firebase API Key *</label>
-      <input type="text" id="newTenantApiKey" class="input-dark" placeholder="例：AIzaSy...">
-      <div style="display:flex; gap:10px; margin-top:8px;">
-        <button class="btn btn-outline" style="flex:1;" onclick="closeAddTenantModal()">取消</button>
-        <button class="btn btn-gold" style="flex:2;" onclick="saveNewTenant()">💾 儲存並切換至此店家</button>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">店家識別名稱 (連線後會自動與店內最新名稱同步)</label>
+          <input type="text" id="newClientName" placeholder="例：老王排骨飯 - 永康店" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm">
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-amber-400 mb-1">Firebase Project ID *</label>
+            <input type="text" id="newClientProjectId" placeholder="例：laowang-pos" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm">
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400 mb-1">Firebase API Key *</label>
+            <input type="text" id="newClientApiKey" placeholder="例：AIzaSy..." class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm">
+          </div>
+        </div>
+        <div class="border-t border-slate-800 pt-3 mt-2">
+          <div class="text-xs font-extrabold text-blue-400 mb-2">🔑 店家提供之 Google / Firebase 登入帳密紀錄</div>
+          <div class="space-y-2.5">
+            <div>
+              <label class="block font-bold text-slate-400 mb-1">Google 帳號 (Email)</label>
+              <input type="text" id="newClientGoogleEmail" placeholder="例：laowang888@gmail.com" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-400 mb-1">Google 密碼</label>
+              <input type="text" id="newClientGooglePwd" placeholder="輸入該 Google 帳號之密碼" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-400 mb-1">總部維運備註 (如 GitHub 網址 / 老闆私人手機)</label>
+              <input type="text" id="newClientAdminMemo" placeholder="例：https://iceapp-maker.github.io/..." class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button onclick="closeAddClientModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm">取消</button>
+        <button onclick="saveAndSwitchNewClient()" class="flex-[2] py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm shadow-lg">
+          💾 儲存並切換至此店家
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- 自訂確認彈窗 -->
-  <div id="superConfirmModal" class="modal-overlay">
-    <div class="panel" style="width:100%; max-width:380px; text-align:center;">
-      <h3 style="color:var(--accent); margin-bottom:10px;">總部指令確認</h3>
-      <p id="superConfirmText" style="font-size:14px; color:#e2e8f0; line-height:1.6; margin-bottom:20px; white-space:pre-line;"></p>
-      <div style="display:flex; gap:10px;">
-        <button class="btn btn-outline" style="flex:1;" onclick="closeSuperConfirm(false)">取消</button>
-        <button class="btn btn-gold" style="flex:1;" onclick="closeSuperConfirm(true)">確定執行</button>
-      </div>
-    </div>
-  </div>
-
-  <header class="topbar">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <span style="font-size:24px;">👑</span>
-      <div>
-        <h1 style="font-size:18px; color:var(--accent);">POS 雲端授權與進階功能總控台</h1>
-        <p style="font-size:12px; color:var(--sub);">遠端即時控制旗下店家之「進階付費模組」、「系統總授權鎖」與「密碼救援」</p>
-      </div>
-    </div>
-    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-      <span style="font-size:13px; color:var(--sub);">目前控管店家：</span>
-      <select id="tenantSelector" class="input-dark" style="margin:0; width:auto; min-width:210px; padding:8px 12px;" onchange="switchTenant(this.value)"></select>
-      <button class="btn btn-outline" onclick="openAddTenantModal()">➕ 新增客戶店家</button>
-    </div>
-  </header>
-
-  <main class="container">
-    <!-- 店家即時連線狀態列 -->
-    <div class="panel" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
-      <div>
-        <div style="font-size:12px; color:var(--sub);">連線資料庫 Project ID：<strong id="dispProjectId" style="color:#fff;">liujia-689d7</strong></div>
-        <h2 id="dispStoreName" style="font-size:22px; margin-top:4px; color:#fff;">載入店家資訊中...</h2>
-        <div id="dispStoreContact" style="font-size:13px; color:var(--sub); margin-top:4px;">📞 -- ｜ 📍 --</div>
-      </div>
-      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-        <div style="background:#020617; border:1px solid var(--border); padding:10px 16px; border-radius:12px; text-align:center;">
-          <div style="font-size:11px; color:var(--sub);">目前後台密碼</div>
-          <strong id="dispCurrentPin" style="font-size:18px; color:var(--accent);">----</strong>
-        </div>
-        <div style="background:#020617; border:1px solid var(--border); padding:10px 16px; border-radius:12px; text-align:center;">
-          <div style="font-size:11px; color:var(--sub);">授權狀態</div>
-          <strong id="dispLicenseBadge" style="font-size:16px; color:var(--green);">🟢 正常授權中</strong>
+  <!-- 3. 總部主控台內容 -->
+  <div id="superMainPanel" class="hidden min-h-screen flex flex-col">
+    <!-- 頂部深色導覽列 (含下拉切換店家與新增按鈕) -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">👑</span>
+        <div>
+          <h1 class="text-lg font-black text-amber-400 tracking-wide">POS 雲端授權與進階功能總控台</h1>
+          <p class="text-xs text-slate-400">遠端即時控制旗下店家之「進階付費模組」、「系統總授權鎖」、「密碼救援」與「Google 帳密備忘」</p>
         </div>
       </div>
-    </div>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <span class="text-xs font-bold text-slate-400">目前控管店家：</span>
+        <select id="clientSelector" onchange="switchClientByIndex(this.value)" class="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold text-sm focus:outline-none focus:border-amber-400"></select>
+        <button onclick="openAddClientModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-400 font-extrabold text-xs transition">
+          ➕ 新增客戶店家
+        </button>
+        <button onclick="deleteCurrentClient()" id="btnDeleteClient" class="px-2.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 font-bold text-xs hidden" title="從總部清單移除此店">
+          🗑️ 移除
+        </button>
+      </div>
+    </header>
 
-    <div class="grid-2">
-      <!-- 左欄：三大進階付費模組遠端開關 -->
-      <div class="panel">
-        <div class="panel-title">
-          <span>💎 進階付費模組開關 (Feature Flags)</span>
-          <button class="btn btn-gold" style="padding:5px 10px; font-size:12px;" onclick="enableAllProFeatures()">⚡ 一鍵全開通測試</button>
-        </div>
-
-        <div class="switch-row">
-          <div class="switch-info">
-            <h4>🖨️ 進階 A：廚房小白單 / 外帶貼紙列印</h4>
-            <p>開啟後，店家接單卡片與已結單會立即出現「🖨️ 單據」按鈕，支援 58mm/80mm 大字預覽與列印。</p>
+    <main class="max-w-5xl w-full mx-auto p-6 space-y-6 flex-1">
+      <!-- 頂部店家資訊卡 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-wrap justify-between items-center gap-4 shadow-xl">
+        <div>
+          <div class="text-xs font-bold text-slate-400 mb-1">
+            連線資料庫 Project ID：<span id="displayProjectId" class="text-amber-400 font-mono">liujia-689d7</span>
           </div>
-          <input type="checkbox" id="chk_enable_printer" class="toggle-checkbox" onchange="updateFeatureFlag('enable_printer', this.checked)">
+          <h2 id="clientStoreName" class="text-2xl font-black text-white">載入中...</h2>
+          <p id="clientStoreMeta" class="text-xs text-slate-400 mt-1">📞 -- ｜ 📍 --</p>
         </div>
-
-        <div class="switch-row">
-          <div class="switch-info">
-            <h4>📈 進階 B：完整週/月報表 & 解除 5 日限制</h4>
-            <p>關閉時僅顯示近 5 日報表；開啟後自動解鎖全歷史天數，並於報表頁出現「日 / 週 / 月」切換鈕與客單價統計。</p>
+        <div class="flex items-center gap-3">
+          <div class="bg-slate-950 border border-slate-800 px-4 py-2.5 rounded-xl text-center">
+            <div class="text-[11px] text-slate-400">目前後台密碼</div>
+            <div id="clientCurrentPin" class="text-lg font-black text-amber-400">----</div>
           </div>
-          <input type="checkbox" id="chk_enable_pro_report" class="toggle-checkbox" onchange="updateFeatureFlag('enable_pro_report', this.checked)">
-        </div>
-
-        <div class="switch-row">
-          <div class="switch-info">
-            <h4>📥 進階 C：Excel (CSV) 帳務匯出 & 雲端清理</h4>
-            <p>開啟後，店家報表頁上方會出現「📥 匯出 Excel」與「🧹 清理 30 天前雲端舊單」按鈕。</p>
+          <div class="bg-slate-950 border border-slate-800 px-4 py-2.5 rounded-xl text-center">
+            <div class="text-[11px] text-slate-400">授權狀態</div>
+            <div id="clientLicenseBadge" class="text-sm font-black text-emerald-400">🟢 正常授權中</div>
           </div>
-          <input type="checkbox" id="chk_enable_csv_clean" class="toggle-checkbox" onchange="updateFeatureFlag('enable_csv_clean', this.checked)">
-        </div>
-
-        <div style="margin-top:14px; padding:12px; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); border-radius:10px; font-size:12px; color:#93c5fd; line-height:1.5;">
-          💡 <strong>即時同步提示</strong>：您在此處打勾或取消，店家的 <code>admin.html</code> 畫面會在 <strong>0.5 秒內自動長出或隱藏對應功能按鈕</strong>，完全不需重新整理網頁！
         </div>
       </div>
 
-      <!-- 右欄：首次裝置綁定鎖 + 密碼救援與總授權鎖定 -->
-      <div class="panel">
-        <div class="panel-title">
-          <span>🛡️ 首次裝置綁定鎖 & 遠端授權控制</span>
-        </div>
-
-        <!-- 任務3：首次啟動 Super Admin 裝置綁定鎖動態改碼與撤銷 -->
-        <div style="background:#0f172a; border:1px solid rgba(245,158,11,0.45); padding:16px; border-radius:12px; margin-bottom:16px;">
-          <h4 style="font-size:15px; color:var(--accent); margin-bottom:6px;">🔐 首次啟動「裝置綁定鎖」動態授權管理</h4>
-          <p style="font-size:12px; color:var(--sub); line-height:1.5; margin-bottom:10px;">
-            當新平板或新電腦第一次開啟店家後台 (<code>admin.html</code>) 時，必須先輸入此處設定的「啟用授權碼」才能永久綁定該設備。
-          </p>
-          <div style="display:flex; gap:8px; margin-bottom:10px;">
-            <input type="text" id="activationPinInput" class="input-dark" style="margin:0; flex:1; font-weight:bold; color:var(--accent);" placeholder="設定啟用授權碼 (預設 888888)" value="888888">
-            <button class="btn btn-gold" onclick="saveActivationPin()">💾 更新啟用碼</button>
+      <!-- 🔑 新增：該店專屬 Google / Firebase 帳號密碼與維運備忘錄 -->
+      <div class="bg-slate-900 border border-blue-500/30 rounded-2xl p-5 shadow-xl">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🔑</span>
+            <div>
+              <h3 class="text-sm font-black text-blue-400">該店專屬 Google / Firebase 登入帳號密碼備忘錄</h3>
+              <p class="text-[11px] text-slate-400">此區塊資料僅總部可見（自動雙重同步於本機與該店雲端 `super_memo` 節點，換電腦也不怕遺失）</p>
+            </div>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; background:#020617; padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
-            <span style="font-size:12px; color:var(--sub);">目前綁定授權版本：<strong id="dispDeviceEpoch" style="color:var(--accent);">v1</strong></span>
-            <button class="btn btn-red" style="padding:6px 12px; font-size:12px;" onclick="revokeAllBoundDevices()">🚫 遠端撤銷所有已綁定設備</button>
-          </div>
-        </div>
-
-        <!-- 第二招：遠端強制重置密碼 -->
-        <div style="background:#0f172a; border:1px solid var(--border); padding:16px; border-radius:12px; margin-bottom:16px;">
-          <h4 style="font-size:15px; color:#f8fafc; margin-bottom:6px;">🔄 店家忘記密碼・一鍵遠端救援</h4>
-          <p style="font-size:12px; color:var(--sub); line-height:1.5; margin-bottom:12px;">
-            當店家老闆忘記自己修改的後台密碼時，點擊下方按鈕可立即將該店家的後台密碼強制洗回預設的 <strong>1111</strong>。
-          </p>
-          <button class="btn btn-blue" style="width:100%; padding:12px;" onclick="remoteResetStorePin()">
-            🔄 立即將該店後台密碼強制重置為 1111
+          <button onclick="saveCurrentClientAccountMemo()" class="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow">
+            💾 儲存帳密與備註
           </button>
         </div>
-
-        <!-- 系統總授權開關 (停權鎖) -->
-        <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.35); padding:16px; border-radius:12px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div>
-              <h4 style="font-size:15px; color:#fca5a5;">🟢 系統總授權開關 (License Active)</h4>
-              <p style="font-size:12px; color:var(--sub);">取消勾選後，該店家的後台將立即跳出全螢幕鎖定遮罩</p>
-            </div>
-            <input type="checkbox" id="chk_license_active" class="toggle-checkbox" checked onchange="updateFeatureFlag('license_active', this.checked)">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-400 mb-1">📧 Google 登入帳號 (Email)</label>
+            <input type="text" id="memoGoogleEmail" placeholder="尚未記錄 (例: xxx@gmail.com)" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm focus:outline-none focus:border-blue-400">
           </div>
-          <label style="font-size:12px; color:#fca5a5;">停權鎖定畫面顯示原因：</label>
-          <input type="text" id="lockReasonInput" class="input-dark" style="margin-bottom:8px;" value="本系統授權目前已暫停或到期，請聯繫系統服務商辦理續約開通。">
-          <button class="btn btn-red" style="width:100%;" onclick="saveLockReason()">💾 更新停權提示文字</button>
+          <div>
+            <label class="block font-bold text-slate-400 mb-1">🔒 Google 登入密碼</label>
+            <div class="relative flex items-center">
+              <input type="password" id="memoGooglePwd" placeholder="尚未記錄密碼" class="w-full px-3 py-2 pr-14 rounded-xl bg-slate-950 border border-slate-700 text-amber-300 font-mono text-sm focus:outline-none focus:border-blue-400">
+              <button type="button" onclick="toggleMemoPwdVisibility()" id="btnTogglePwd" class="absolute right-2 px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white text-[11px] font-bold">
+                👁️ 顯示
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-400 mb-1">📝 維運備註 (GitHub 網址 / 老闆聯絡方式)</label>
+            <input type="text" id="memoAdminNote" placeholder="例: GitHub 專案名 / 老闆娘 Line" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-blue-400">
+          </div>
         </div>
       </div>
-    </div>
-  </main>
 
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 左欄：進階付費模組開關 (Feature Flags) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-base font-black text-amber-400">💎 進階付費模組開關 (Feature Flags)</h3>
+            <button onclick="enableAllProFeatures()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow">
+              ⚡ 一鍵全開通測試
+            </button>
+          </div>
+
+          <label class="flex items-center justify-between p-4 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700">
+            <div class="pr-3">
+              <div class="font-extrabold text-sm text-white">🖨️ 進階 A：廚房小白單 / 外帶貼紙列印</div>
+              <div class="text-xs text-slate-400 mt-1">開啟後，店家接單卡片與已結單會立即出現「🖨️ 單據」按鈕，支援 58mm/80mm 大字預覽與列印。</div>
+            </div>
+            <input type="checkbox" id="flag_printer" onchange="updateFeatureFlag('enable_printer', this.checked)" class="w-6 h-6 accent-amber-500">
+          </label>
+
+          <label class="flex items-center justify-between p-4 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700">
+            <div class="pr-3">
+              <div class="font-extrabold text-sm text-white">📈 進階 B：完整週/月報表 & 解除 5 日限制</div>
+              <div class="text-xs text-slate-400 mt-1">關閉時僅顯示近 5 日報表；開啟後自動解鎖全歷史天數，並於報表頁出現「日 / 週 / 月」切換鈕與客單價統計。</div>
+            </div>
+            <input type="checkbox" id="flag_pro_report" onchange="updateFeatureFlag('enable_pro_report', this.checked)" class="w-6 h-6 accent-amber-500">
+          </label>
+
+          <label class="flex items-center justify-between p-4 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700">
+            <div class="pr-3">
+              <div class="font-extrabold text-sm text-white">📥 進階 C：Excel (CSV) 帳務匯出 & 雲端清理</div>
+              <div class="text-xs text-slate-400 mt-1">開啟後，店家報表頁上方會出現「📥 匯出 Excel」與「🧹 清理 30 天前雲端舊單」按鈕。</div>
+            </div>
+            <input type="checkbox" id="flag_csv_clean" onchange="updateFeatureFlag('enable_csv_clean', this.checked)" class="w-6 h-6 accent-amber-500">
+          </label>
+
+          <div class="bg-blue-950/40 border border-blue-800/50 rounded-xl p-3 text-xs text-blue-300 leading-relaxed">
+            💡 <strong>即時同步提示：</strong>您在此處打勾或取消，店家的 <code class="text-white">admin.html</code> 畫面會在 <strong>0.5 秒內自動長出或隱藏</strong>對應功能按鈕，完全不需重新整理網頁！
+          </div>
+        </div>
+
+        <!-- 右欄：首次裝置綁定鎖控制 + 遠端密碼救援 + 總授權開關 -->
+        <div class="space-y-6">
+          <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 space-y-4 shadow-xl">
+            <h3 class="text-base font-black text-amber-400 border-b border-slate-800 pb-2">🔐 首次啟動「裝置綁定鎖」動態授權管理</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">當新平板或新電腦第一次開啟店家後台 (<code class="text-slate-200">admin.html</code>) 時，必須先輸入此處設定的「啟用授權碼」才能永久綁定該設備。</p>
+            <div class="flex gap-2">
+              <input type="text" id="activationPinSetting" placeholder="設定啟用授權碼 (例: 888888)" class="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-amber-300 font-mono font-bold text-sm">
+              <button onclick="saveActivationPin()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs whitespace-nowrap">
+                💾 更新啟用碼
+              </button>
+            </div>
+            <div class="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div class="text-xs text-slate-300">目前綁定授權版本：<strong id="deviceEpochDisplay" class="text-amber-400">v1</strong></div>
+              <button onclick="revokeAllBoundDevices()" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs shadow">
+                🚫 遠端撤銷所有已綁定設備
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+            <h3 class="text-base font-black text-blue-400 border-b border-slate-800 pb-2">🛡️ 遠端密碼救援 & 系統總授權控制</h3>
+
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <div class="font-extrabold text-sm text-white mb-1">🔄 店家忘記密碼・一鍵遠端救援</div>
+              <p class="text-xs text-slate-400 mb-3">當店家老闆忘記自己修改的後台密碼時，點擊下方按鈕可立即將該店家的後台密碼強制洗回預設的 <strong class="text-white">1111</strong>。</p>
+              <button onclick="forceResetMerchantPin()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow">
+                🔄 立即將該店後台密碼強制重置為 1111
+              </button>
+            </div>
+
+            <div class="bg-rose-950/40 p-4 rounded-xl border border-rose-800/60 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-extrabold text-sm text-rose-300">🟢 系統總授權開關 (License Active)</div>
+                  <div class="text-xs text-rose-400/80">取消勾選後，該店家的前台與後台將立即跳出全螢幕鎖定遮罩。</div>
+                </div>
+                <input type="checkbox" id="flag_license_active" onchange="updateFeatureFlag('license_active', this.checked)" class="w-6 h-6 accent-emerald-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-rose-300 mb-1">停權鎖定畫面顯示原因：</label>
+                <input type="text" id="suspendReasonInput" value="本系統授權目前已暫停或到期，請聯繫系統服務商辦理續約開通。" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-rose-800 text-xs text-white mb-2">
+                <button onclick="saveSuspendReason()" class="w-full py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs">
+                  💾 更新停權提示文字
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+<!-- [Section 2: 總部登入鎖、頂部導覽與新增店家彈窗] End -->
+
+<!-- [Section 3: JS 多店切換、店名自動同步與 Google 帳密備忘錄邏輯] Start -->
   <script>
-    // 預設第一家店 (劉家川味牛肉麵 / 大飯小吃) 的連線參數
-    const DEFAULT_TENANTS = [
-      {
-        id: "liujia_default",
-        label: "劉家川味牛肉麵 / 大飯小吃 (預設店)",
-        apiKey: "AIzaSyAm2HTW9fmse5lXnzrkMyEQQYZpAzQoHD4",
-        authDomain: "liujia-689d7.firebaseapp.com",
-        projectId: "liujia-689d7"
-      }
-    ];
+    const DEFAULT_CLIENT = {
+      name: "大飯桶小吃",
+      projectId: "liujia-689d7",
+      apiKey: "AIzaSyAm2HTW9fmse5lXnzrkMyEQQYZpAzQoHD4",
+      googleEmail: "",
+      googlePwd: "",
+      adminMemo: ""
+    };
 
-    let tenantsList = JSON.parse(localStorage.getItem("super_admin_tenants") || "null") || DEFAULT_TENANTS;
-    let currentTenant = tenantsList[0];
-    let activeDb = null;
+    let clientList = [];
+    let currentClientIdx = 0;
+    let currentDb = null;
     let unsubStore = null;
     let unsubAdmin = null;
     let unsubLicense = null;
-    let confirmCb = null;
+    let unsubMemo = null;
+    let currentDeviceEpoch = 1;
+
+    function loadClientListFromStorage() {
+      try {
+        const raw = localStorage.getItem("pos_super_admin_clients_v2");
+        if (raw) {
+          clientList = JSON.parse(raw);
+        }
+      } catch (e) {}
+      if (!Array.isArray(clientList) || clientList.length === 0) {
+        clientList = [{ ...DEFAULT_CLIENT }];
+        saveClientListToStorage();
+      }
+    }
+
+    function saveClientListToStorage() {
+      try {
+        localStorage.setItem("pos_super_admin_clients_v2", JSON.stringify(clientList));
+      } catch (e) {}
+    }
+
+    function renderClientSelector() {
+      const sel = document.getElementById("clientSelector");
+      if (!sel) return;
+      sel.innerHTML = clientList.map((c, idx) => `
+        <option value="${idx}" ${idx === currentClientIdx ? 'selected' : ''}>
+          ${c.name || '未命名店家'} (${c.projectId})
+        </option>
+      `).join('');
+
+      const delBtn = document.getElementById("btnDeleteClient");
+      if (delBtn) {
+        delBtn.classList.toggle("hidden", clientList.length <= 1);
+      }
+    }
 
     function showToast(msg) {
       const t = document.getElementById("toast");
       t.innerText = msg;
-      t.style.display = "block";
-      setTimeout(() => { t.style.display = "none"; }, 2600);
+      t.classList.remove("hidden");
+      setTimeout(() => t.classList.add("hidden"), 2600);
     }
 
-    function openSuperConfirm(text, cb) {
-      document.getElementById("superConfirmText").innerText = text;
-      confirmCb = cb;
-      document.getElementById("superConfirmModal").style.display = "flex";
-    }
-
-    window.closeSuperConfirm = function(yes) {
-      document.getElementById("superConfirmModal").style.display = "none";
-      if (confirmCb) confirmCb(yes);
-    };
-
-    // 總部密碼驗證 (預設 888888)
-    window.unlockSuperAdmin = function() {
-      const pin = document.getElementById("masterPinInput").value.trim();
-      const savedMasterPin = localStorage.getItem("super_admin_master_pin") || "888888";
-      if (pin === savedMasterPin) {
-        document.getElementById("superLoginOverlay").style.display = "none";
-        initTenantSelector();
-        connectToTenantFirebase(currentTenant);
+    window.loginSuperAdmin = function() {
+      const pin = document.getElementById("superPinInput").value.trim();
+      if (pin === "888888") {
+        document.getElementById("superLoginScreen").classList.add("hidden");
+        document.getElementById("superMainPanel").classList.remove("hidden");
+        loadClientListFromStorage();
+        renderClientSelector();
+        connectToClientDatabase(0);
       } else {
-        showToast("❌ 總部通行碼錯誤！(預設為 888888)");
+        showToast("❌ 總部密碼錯誤！(預設 888888)");
       }
     };
 
-    document.getElementById("masterPinInput").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") unlockSuperAdmin();
+    document.getElementById("superPinInput").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") loginSuperAdmin();
     });
 
-    function initTenantSelector() {
-      const sel = document.getElementById("tenantSelector");
-      sel.innerHTML = tenantsList.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
-      sel.value = currentTenant.id;
-    }
-
-    window.switchTenant = function(tenantId) {
-      const found = tenantsList.find(t => t.id === tenantId);
-      if (!found) return;
-      currentTenant = found;
-      connectToTenantFirebase(currentTenant);
+    window.switchClientByIndex = function(idxStr) {
+      const idx = parseInt(idxStr, 10);
+      if (isNaN(idx) || !clientList[idx]) return;
+      connectToClientDatabase(idx);
     };
 
-    function connectToTenantFirebase(tenant) {
-      if (unsubStore) unsubStore();
-      if (unsubAdmin) unsubAdmin();
-      if (unsubLicense) unsubLicense();
+    function connectToClientDatabase(idx) {
+      currentClientIdx = idx;
+      const client = clientList[idx];
+      renderClientSelector();
 
-      document.getElementById("dispProjectId").innerText = tenant.projectId;
-      document.getElementById("dispStoreName").innerText = "連線同步中...";
+      // 取消前一家店的監聽器
+      if (unsubStore) { unsubStore(); unsubStore = null; }
+      if (unsubAdmin) { unsubAdmin(); unsubAdmin = null; }
+      if (unsubLicense) { unsubLicense(); unsubLicense = null; }
+      if (unsubMemo) { unsubMemo(); unsubMemo = null; }
 
-      const appName = "app_" + tenant.id;
-      let existingApp = firebase.apps.find(a => a.name === appName);
-      if (!existingApp) {
-        existingApp = firebase.initializeApp({
-          apiKey: tenant.apiKey,
-          authDomain: tenant.authDomain || `${tenant.projectId}.firebaseapp.com`,
-          projectId: tenant.projectId
+      document.getElementById("displayProjectId").innerText = client.projectId;
+      document.getElementById("clientStoreName").innerText = client.name || "連線讀取中...";
+      document.getElementById("clientStoreMeta").innerText = "📞 讀取中... ｜ 📍 讀取中...";
+
+      // 先填入本機記憶的 Google 帳密與備註
+      document.getElementById("memoGoogleEmail").value = client.googleEmail || "";
+      document.getElementById("memoGooglePwd").value = client.googlePwd || "";
+      document.getElementById("memoAdminNote").value = client.adminMemo || "";
+
+      const appName = "super_app_" + client.projectId.replace(/[^a-zA-Z0-9_]/g, "_");
+      let targetApp = firebase.apps.find(a => a.name === appName);
+      if (!targetApp) {
+        targetApp = firebase.initializeApp({
+          apiKey: client.apiKey,
+          authDomain: `${client.projectId}.firebaseapp.com`,
+          projectId: client.projectId
         }, appName);
       }
-      activeDb = firebase.firestore(existingApp);
+      currentDb = firebase.firestore(targetApp);
 
-      // 1. 監聽該店基本資料
-      unsubStore = activeDb.collection("system_settings").doc("store_info").onSnapshot(doc => {
+      initSuperListeners();
+    }
+
+    function initSuperListeners() {
+      if (!currentDb) return;
+
+      // 1. 監聽店家基本資訊，並【自動同步更新右上角下拉選單的店名】
+      unsubStore = currentDb.collection("system_settings").doc("store_info").onSnapshot(doc => {
         if (doc.exists) {
           const d = doc.data();
-          document.getElementById("dispStoreName").innerText = d.store_name || tenant.label;
-          document.getElementById("dispStoreContact").innerText = `📞 ${d.store_phone || '未設電話'} ｜ 📍 ${d.store_address || '未設地址'}`;
+          const latestStoreName = (d.store_name || "").trim();
+          document.getElementById("clientStoreName").innerText = latestStoreName || "未命名店家";
+          document.getElementById("clientStoreMeta").innerText = `📞 ${d.store_phone || '--'} ｜ 📍 ${d.store_address || '--'}`;
+
+          // 若雲端店名有變更，自動同步更新至總部下拉選單與 localStorage
+          if (latestStoreName && clientList[currentClientIdx].name !== latestStoreName) {
+            clientList[currentClientIdx].name = latestStoreName;
+            saveClientListToStorage();
+            renderClientSelector();
+          }
         } else {
-          document.getElementById("dispStoreName").innerText = tenant.label;
+          document.getElementById("clientStoreName").innerText = clientList[currentClientIdx].name || "新店家 (尚未設定店名)";
+          document.getElementById("clientStoreMeta").innerText = "📞 尚未設定 ｜ 📍 尚未設定";
         }
       });
 
-      // 2. 監聽該店目前後台密碼
-      unsubAdmin = activeDb.collection("system_settings").doc("admin").onSnapshot(doc => {
+      // 2. 監聽日常後台密碼
+      unsubAdmin = currentDb.collection("system_settings").doc("admin").onSnapshot(doc => {
         if (doc.exists) {
-          const d = doc.data();
-          document.getElementById("dispCurrentPin").innerText = d.force_reset_pin ? "1111 (待觸發重置)" : (d.pin || "1111");
+          document.getElementById("clientCurrentPin").innerText = doc.data().pin || "1111";
         } else {
-          document.getElementById("dispCurrentPin").innerText = "1111 (預設)";
+          document.getElementById("clientCurrentPin").innerText = "1111";
         }
       });
 
-      // 3. 監聽並自動初始化該店的 License 與進階功能開關
-      unsubLicense = activeDb.collection("system_settings").doc("license").onSnapshot(doc => {
+      // 3. 監聽總部專屬備忘錄節點 (super_memo)，確保換電腦也能讀回 Google 帳密
+      unsubMemo = currentDb.collection("system_settings").doc("super_memo").onSnapshot(doc => {
         if (doc.exists) {
-          const d = doc.data();
-          const isActive = d.license_active !== false;
-          document.getElementById("chk_license_active").checked = isActive;
-          document.getElementById("chk_enable_printer").checked = !!d.enable_printer;
-          document.getElementById("chk_enable_pro_report").checked = !!d.enable_pro_report;
-          document.getElementById("chk_enable_csv_clean").checked = !!d.enable_csv_clean;
-          if (d.lock_reason) document.getElementById("lockReasonInput").value = d.lock_reason;
-          if (document.getElementById("activationPinInput")) {
-            document.getElementById("activationPinInput").value = d.activation_pin || "888888";
-          }
-          window.currentDeviceEpoch = Number(d.device_epoch || 1);
-          if (document.getElementById("dispDeviceEpoch")) {
-            document.getElementById("dispDeviceEpoch").innerText = "v" + window.currentDeviceEpoch;
-          }
+          const m = doc.data();
+          const cur = clientList[currentClientIdx];
+          let updated = false;
+          if (m.googleEmail !== undefined && m.googleEmail !== cur.googleEmail) { cur.googleEmail = m.googleEmail; updated = true; }
+          if (m.googlePwd !== undefined && m.googlePwd !== cur.googlePwd) { cur.googlePwd = m.googlePwd; updated = true; }
+          if (m.adminMemo !== undefined && m.adminMemo !== cur.adminMemo) { cur.adminMemo = m.adminMemo; updated = true; }
+          if (updated) saveClientListToStorage();
 
-          const badge = document.getElementById("dispLicenseBadge");
-          badge.innerText = isActive ? "🟢 正常授權中" : "🔴 已停權鎖定";
-          badge.style.color = isActive ? "var(--green)" : "var(--red)";
-        } else {
-          // 若資料庫尚無 license 文件，自動為該店建立預設結構
-          activeDb.collection("system_settings").doc("license").set({
+          document.getElementById("memoGoogleEmail").value = cur.googleEmail || "";
+          document.getElementById("memoGooglePwd").value = cur.googlePwd || "";
+          document.getElementById("memoAdminNote").value = cur.adminMemo || "";
+        }
+      });
+
+      // 4. 監聽授權與進階功能開關
+      unsubLicense = currentDb.collection("system_settings").doc("license").onSnapshot(doc => {
+        if (!doc.exists) {
+          currentDb.collection("system_settings").doc("license").set({
             license_active: true,
             enable_printer: false,
             enable_pro_report: false,
             enable_csv_clean: false,
             activation_pin: "888888",
-            device_epoch: 1,
-            lock_reason: "本系統授權目前已暫停或到期，請聯繫系統服務商辦理續約開通。"
-          }, { merge: true });
+            device_epoch: 1
+          });
+          return;
+        }
+        const d = doc.data();
+        const isActive = d.license_active !== false;
+        document.getElementById("flag_license_active").checked = isActive;
+        document.getElementById("flag_printer").checked = Boolean(d.enable_printer);
+        document.getElementById("flag_pro_report").checked = Boolean(d.enable_pro_report);
+        document.getElementById("flag_csv_clean").checked = Boolean(d.enable_csv_clean);
+
+        if (d.suspend_reason) document.getElementById("suspendReasonInput").value = d.suspend_reason;
+        document.getElementById("activationPinSetting").value = d.activation_pin || "888888";
+        currentDeviceEpoch = Number(d.device_epoch) || 1;
+        document.getElementById("deviceEpochDisplay").innerText = `v${currentDeviceEpoch}`;
+
+        const badge = document.getElementById("clientLicenseBadge");
+        if (isActive) {
+          badge.innerText = "🟢 正常授權中";
+          badge.className = "text-sm font-black text-emerald-400";
+        } else {
+          badge.innerText = "🔴 已停權鎖定";
+          badge.className = "text-sm font-black text-rose-500";
         }
       });
     }
 
-    // 儲存首次裝置啟用授權碼
-    window.saveActivationPin = async function() {
-      if (!activeDb) return;
-      const newPin = document.getElementById("activationPinInput").value.trim();
-      if (!newPin || newPin.length < 4) return showToast("⚠️ 啟用授權碼請至少設定 4 位數！");
-      try {
-        await activeDb.collection("system_settings").doc("license").set({
-          activation_pin: newPin,
-          updated_at: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        showToast(`🔑 首次裝置啟用授權碼已更新為：${newPin}`);
-      } catch (e) { showToast("更新失敗"); }
-    };
+    // 儲存該店專屬 Google 帳密與維運備註 (同時寫入本機與雲端 super_memo)
+    window.saveCurrentClientAccountMemo = async function() {
+      const email = document.getElementById("memoGoogleEmail").value.trim();
+      const pwd = document.getElementById("memoGooglePwd").value.trim();
+      const note = document.getElementById("memoAdminNote").value.trim();
 
-    // 遠端撤銷所有已綁定裝置
-    window.revokeAllBoundDevices = function() {
-      openSuperConfirm("確定要遠端撤銷該店家所有已綁定的平板與電腦嗎？\n執行後，店家所有設備都會立即跳回「首次啟用驗證」畫面，必須重新由您輸入啟用授權碼才能使用！", async (yes) => {
-        if (!yes || !activeDb) return;
-        const nextEpoch = (window.currentDeviceEpoch || 1) + 1;
+      clientList[currentClientIdx].googleEmail = email;
+      clientList[currentClientIdx].googlePwd = pwd;
+      clientList[currentClientIdx].adminMemo = note;
+      saveClientListToStorage();
+
+      if (currentDb) {
         try {
-          await activeDb.collection("system_settings").doc("license").set({
-            device_epoch: nextEpoch,
-            updated_at: firebase.firestore.FieldValue.serverTimestamp()
+          await currentDb.collection("system_settings").doc("super_memo").set({
+            googleEmail: email,
+            googlePwd: pwd,
+            adminMemo: note,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
-          showToast(`🚫 已撤銷所有設備綁定 (升級至 v${nextEpoch})！`);
-        } catch (e) { showToast("撤銷失敗"); }
-      });
-    };
-
-    // 切換任一進階功能開關
-    window.updateFeatureFlag = async function(field, val) {
-      if (!activeDb) return;
-      try {
-        await activeDb.collection("system_settings").doc("license").set({
-          [field]: val,
-          updated_at: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        showToast(`✅ 已遠端同步更新 [${field}] 為 ${val ? '開啟' : '關閉'}！`);
-      } catch (e) {
-        showToast("更新失敗，請檢查網路或權限");
+          showToast("💾 已儲存該店 Google 帳密與備註（已同步備份至雲端）！");
+        } catch (e) {
+          showToast("💾 已儲存至本機（雲端同步失敗）");
+        }
       }
     };
 
-    // 一鍵全開通三大進階模組
+    window.toggleMemoPwdVisibility = function() {
+      const input = document.getElementById("memoGooglePwd");
+      const btn = document.getElementById("btnTogglePwd");
+      if (input.type === "password") {
+        input.type = "text";
+        btn.innerText = "🙈 隱藏";
+      } else {
+        input.type = "password";
+        btn.innerText = "👁️ 顯示";
+      }
+    };
+
+    // 新增合作店家彈窗控制
+    window.openAddClientModal = function() {
+      document.getElementById("newClientName").value = "";
+      document.getElementById("newClientProjectId").value = "";
+      document.getElementById("newClientApiKey").value = "";
+      document.getElementById("newClientGoogleEmail").value = "";
+      document.getElementById("newClientGooglePwd").value = "";
+      document.getElementById("newClientAdminMemo").value = "";
+      document.getElementById("addClientModal").classList.remove("hidden");
+      document.getElementById("addClientModal").classList.add("flex");
+    };
+
+    window.closeAddClientModal = function() {
+      document.getElementById("addClientModal").classList.add("hidden");
+      document.getElementById("addClientModal").classList.remove("flex");
+    };
+
+    window.saveAndSwitchNewClient = async function() {
+      const name = document.getElementById("newClientName").value.trim() || "新合作店家";
+      const projectId = document.getElementById("newClientProjectId").value.trim();
+      const apiKey = document.getElementById("newClientApiKey").value.trim();
+      const googleEmail = document.getElementById("newClientGoogleEmail").value.trim();
+      const googlePwd = document.getElementById("newClientGooglePwd").value.trim();
+      const adminMemo = document.getElementById("newClientAdminMemo").value.trim();
+
+      if (!projectId || !apiKey) {
+        return showToast("⚠️ 請填寫 Firebase Project ID 與 API Key！");
+      }
+
+      const existIdx = clientList.findIndex(c => c.projectId === projectId);
+      if (existIdx >= 0) {
+        clientList[existIdx] = { name, projectId, apiKey, googleEmail, googlePwd, adminMemo };
+        saveClientListToStorage();
+        closeAddClientModal();
+        connectToClientDatabase(existIdx);
+      } else {
+        clientList.push({ name, projectId, apiKey, googleEmail, googlePwd, adminMemo });
+        saveClientListToStorage();
+        closeAddClientModal();
+        connectToClientDatabase(clientList.length - 1);
+      }
+
+      // 同步將帳密備份寫入新店雲端
+      if (currentDb && (googleEmail || googlePwd || adminMemo)) {
+        try {
+          await currentDb.collection("system_settings").doc("super_memo").set({
+            googleEmail, googlePwd, adminMemo
+          }, { merge: true });
+        } catch (e) {}
+      }
+      showToast(`✅ 已成功連線至「${name}」！`);
+    };
+
+    window.deleteCurrentClient = function() {
+      if (clientList.length <= 1) return showToast("至少需保留一家預設店家！");
+      const cur = clientList[currentClientIdx];
+      if (!confirm(`確定要從總部下拉選單移除「${cur.name} (${cur.projectId})」嗎？\n（註：這只會從清單移除，不會刪除該店的雲端資料庫）`)) return;
+      clientList.splice(currentClientIdx, 1);
+      saveClientListToStorage();
+      connectToClientDatabase(0);
+      showToast("🗑️ 已從總部清單移除該店家");
+    };
+
+    window.updateFeatureFlag = async function(key, val) {
+      if (!currentDb) return;
+      await currentDb.collection("system_settings").doc("license").set({ [key]: val }, { merge: true });
+      showToast(`⚡ 已同步更新權限：${key} = ${val}`);
+    };
+
     window.enableAllProFeatures = async function() {
-      if (!activeDb) return;
-      try {
-        await activeDb.collection("system_settings").doc("license").set({
-          license_active: true,
-          enable_printer: true,
-          enable_pro_report: true,
-          enable_csv_clean: true,
-          updated_at: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        showToast("💎 已為該店家一鍵全開通所有進階付費模組！");
-      } catch (e) {
-        showToast("開通失敗");
-      }
+      if (!currentDb) return;
+      await currentDb.collection("system_settings").doc("license").set({
+        license_active: true,
+        enable_printer: true,
+        enable_pro_report: true,
+        enable_csv_clean: true
+      }, { merge: true });
+      showToast("🎉 已一鍵開通該店所有進階模組！");
     };
 
-    window.saveLockReason = async function() {
-      if (!activeDb) return;
-      const reason = document.getElementById("lockReasonInput").value.trim();
-      try {
-        await activeDb.collection("system_settings").doc("license").set({ lock_reason: reason }, { merge: true });
-        showToast("💾 停權提示文字已更新！");
-      } catch (e) { showToast("儲存失敗"); }
+    window.forceResetMerchantPin = async function() {
+      if (!currentDb) return;
+      await currentDb.collection("system_settings").doc("admin").set({
+        pin: "1111",
+        force_reset_pin: true
+      }, { merge: true });
+      showToast("🔄 已將該店後台日常密碼強制重置為 1111！");
     };
 
-    // 第二招：一鍵遠端將店家後台密碼重置為 1111
-    window.remoteResetStorePin = function() {
-      openSuperConfirm("確定要遠端將此店家的後台密碼強制重置回「1111」嗎？", async (yes) => {
-        if (!yes || !activeDb) return;
-        try {
-          await activeDb.collection("system_settings").doc("admin").set({
-            pin: "1111",
-            force_reset_pin: true
-          }, { merge: true });
-          showToast("🔄 已成功將該店後台密碼遠端重置為 1111！");
-        } catch (e) { showToast("重置失敗"); }
-      });
+    window.saveSuspendReason = async function() {
+      if (!currentDb) return;
+      const reason = document.getElementById("suspendReasonInput").value.trim();
+      await currentDb.collection("system_settings").doc("license").set({ suspend_reason: reason }, { merge: true });
+      showToast("💾 停權提示文字已更新！");
     };
 
-    // 新增合作客戶店家至清單
-    window.openAddTenantModal = function() {
-      document.getElementById("addTenantModal").style.display = "flex";
+    window.saveActivationPin = async function() {
+      if (!currentDb) return;
+      const newActPin = document.getElementById("activationPinSetting").value.trim();
+      if (!newActPin || newActPin.length < 4) return showToast("啟用授權碼至少需 4 位數！");
+      await currentDb.collection("system_settings").doc("license").set({ activation_pin: newActPin }, { merge: true });
+      showToast(`🔑 首次裝置啟用授權碼已更新為：${newActPin}`);
     };
-    window.closeAddTenantModal = function() {
-      document.getElementById("addTenantModal").style.display = "none";
-    };
-    window.saveNewTenant = function() {
-      const label = document.getElementById("newTenantName").value.trim();
-      const projectId = document.getElementById("newTenantProjectId").value.trim();
-      const apiKey = document.getElementById("newTenantApiKey").value.trim();
-      if (!label || !projectId || !apiKey) return showToast("請完整填寫店家名稱、Project ID 與 API Key！");
-      const newObj = {
-        id: "store_" + Date.now(),
-        label,
-        projectId,
-        apiKey,
-        authDomain: `${projectId}.firebaseapp.com`
-      };
-      tenantsList.push(newObj);
-      localStorage.setItem("super_admin_tenants", JSON.stringify(tenantsList));
-      currentTenant = newObj;
-      initTenantSelector();
-      connectToTenantFirebase(currentTenant);
-      closeAddTenantModal();
-      showToast("✅ 已新增並切換至該合作店家！");
+
+    window.revokeAllBoundDevices = async function() {
+      if (!currentDb) return;
+      const nextEpoch = currentDeviceEpoch + 1;
+      await currentDb.collection("system_settings").doc("license").set({ device_epoch: nextEpoch }, { merge: true });
+      showToast(`🚫 已撤銷所有已綁定設備（升級至 v${nextEpoch}），店家設備需重新輸入啟用碼！`);
     };
   </script>
 </body>
 </html>
+<!-- [Section 3: JS 多店切換、店名自動同步與 Google 帳密備忘錄邏輯] End -->
