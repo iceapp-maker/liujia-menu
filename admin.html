@@ -380,7 +380,7 @@
           <label style="font-size:12px; font-weight:bold; color:var(--primary);">外帶稱呼 & 電話 (必填)</label>
           <div style="display:flex; gap:6px;">
             <input type="text" id="posCustName" class="input-field" style="margin-bottom:0;" placeholder="稱呼*">
-            <input type="tel" id="posCustPhone" class="input-field" style="margin-bottom:0;" placeholder="電話*">
+            <input type="tel" id="posCustPhone" class="input-field" style="margin-bottom:0;" inputmode="numeric" maxlength="12" placeholder="手機10碼/市話7或9碼*" oninput="this.value=this.value.replace(/[^0-9-]/g,'')">
           </div>
         </div>
       </div>
